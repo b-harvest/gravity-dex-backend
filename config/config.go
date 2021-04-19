@@ -8,11 +8,13 @@ import (
 )
 
 var DefaultConfig = Config{
-	Log: zap.NewProductionConfig(),
+	BindAddr: "0.0.0.0:8080",
+	Log:      zap.NewProductionConfig(),
 }
 
 type Config struct {
-	Log zap.Config `yaml:"log"`
+	BindAddr string     `yaml:"bind_addr"`
+	Log      zap.Config `yaml:"log"`
 }
 
 func Load(path string) (Config, error) {
