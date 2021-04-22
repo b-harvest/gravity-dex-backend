@@ -1,8 +1,6 @@
 package config
 
-import (
-	"go.uber.org/zap"
-)
+import "go.uber.org/zap"
 
 var DefaultServerConfig = ServerConfig{
 	BindAddr: "0.0.0.0:8080",

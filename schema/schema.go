@@ -1,8 +1,6 @@
 package schema
 
-import (
-	"time"
-)
+import "time"
 
 const (
 	CheckpointBlockHeightKey = "blockHeight"
@@ -49,21 +47,15 @@ type DepositAction struct {
 }
 
 const (
-	SupplyBlockHeightKey = "blockHeight"
-)
-
-type Supply struct {
-	BlockHeight int64 `bson:"blockHeight"`
-	Coin
-}
-
-const (
 	PoolBlockHeightKey = "blockHeight"
+	PoolIDKey          = "id"
+	PoolReserveCoins   = "reserveCoins"
+	PoolPoolCoinKey    = "poolCoin"
 )
 
 type Pool struct {
-	BlockHeight    int64  `bson:"blockHeight"`
-	ReserveCoins   []Coin `bson:"reserveCoins"`
-	PoolCoinDenom  string `bson:"poolCoinDenom"`
-	PoolCoinSupply int64  `bson:"poolCoinSupply"`
+	BlockHeight  int64  `bson:"blockHeight"`
+	ID           uint64 `bson:"id"`
+	ReserveCoins []Coin `bson:"reserveCoins"`
+	PoolCoin     Coin   `bson:"poolCoin"`
 }

@@ -16,7 +16,6 @@ var DefaultTransformerConfig = TransformerConfig{
 		DB:                   "gdex",
 		CheckpointCollection: "checkpoint",
 		AccountCollection:    "accounts",
-		SupplyCollection:     "supplies",
 		PoolCollection:       "pools",
 	},
 	Log: zap.NewProductionConfig(),
@@ -36,7 +35,6 @@ type MongoDBConfig struct {
 	DB                   string `yaml:"db"`
 	CheckpointCollection string `yaml:"checkpoint_collection"`
 	AccountCollection    string `yaml:"account_collection"`
-	SupplyCollection     string `yaml:"supply_collection"`
 	PoolCollection       string `yaml:"pool_collection"`
 }
 

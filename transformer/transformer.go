@@ -42,10 +42,6 @@ func (t *Transformer) AccountCollection() *mongo.Collection {
 	return t.mc.Database(t.cfg.MongoDB.DB).Collection(t.cfg.MongoDB.AccountCollection)
 }
 
-func (t *Transformer) SupplyCollection() *mongo.Collection {
-	return t.mc.Database(t.cfg.MongoDB.DB).Collection(t.cfg.MongoDB.SupplyCollection)
-}
-
 func (t *Transformer) PoolCollection() *mongo.Collection {
 	return t.mc.Database(t.cfg.MongoDB.DB).Collection(t.cfg.MongoDB.PoolCollection)
 }
@@ -57,7 +53,7 @@ func (t *Transformer) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("get latest block height: %w", err)
 		}
-		t.logger.Info("got latest block height", zap.Int64("height", h))
+		t.logger.Debug("got latest block height", zap.Int64("height", h))
 		t.logger.Debug("pruning old state", zap.Int64("height", h))
 		if err := t.PruneOldState(ctx, h+int64(t.cfg.PruningOffset)); err != nil {
 			return fmt.Errorf("prune old state: %w", err)
@@ -66,8 +62,9 @@ func (t *Transformer) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("wait for next block data: %w", err)
 		}
+		balances := data.Balances()
 		t.logger.Info("updating state", zap.Int64("height", h+1))
-		if err := t.UpdateState(ctx, data, h); err != nil {
+		if err := t.UpdateState(ctx, h, data, balances); err != nil {
 			return fmt.Errorf("update state: %w", err)
 		}
 		t.logger.Debug("updating latest block height", zap.Int64("height", h+1))
@@ -109,11 +106,6 @@ func (t *Transformer) PruneOldState(ctx context.Context, currentBlockHeight int6
 		schema.AccountBlockHeightKey: bson.M{"$lt": currentBlockHeight},
 	}); err != nil {
 		return fmt.Errorf("prune account collection: %w", err)
-	}
-	if _, err := t.SupplyCollection().DeleteMany(ctx, bson.M{
-		schema.SupplyBlockHeightKey: bson.M{"$lt": currentBlockHeight},
-	}); err != nil {
-		return fmt.Errorf("prune coin collection: %w", err)
 	}
 	if _, err := t.PoolCollection().DeleteMany(ctx, bson.M{
 		schema.PoolBlockHeightKey: bson.M{"$lt": currentBlockHeight},
@@ -160,22 +152,16 @@ func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64) (
 	}
 }
 
-func (t *Transformer) UpdateState(ctx context.Context, data *BlockData, currentBlockHeight int64) error {
+func (t *Transformer) UpdateState(ctx context.Context, currentBlockHeight int64, data *BlockData, balances map[string][]schema.Coin) error {
 	eg, ctx2 := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		if err := t.UpdateAccounts(ctx2, data, currentBlockHeight); err != nil {
+		if err := t.UpdateAccounts(ctx2, currentBlockHeight, data, balances); err != nil {
 			return fmt.Errorf("update accounts: %w", err)
 		}
 		return nil
 	})
 	eg.Go(func() error {
-		if err := t.UpdateCoins(ctx2, data, currentBlockHeight); err != nil {
-			return fmt.Errorf("update coins: %w", err)
-		}
-		return nil
-	})
-	eg.Go(func() error {
-		if err := t.UpdatePools(ctx2, data, currentBlockHeight); err != nil {
+		if err := t.UpdatePools(ctx2, currentBlockHeight, data, balances); err != nil {
 			return fmt.Errorf("update pools: %w", err)
 		}
 		return nil
@@ -183,7 +169,7 @@ func (t *Transformer) UpdateState(ctx context.Context, data *BlockData, currentB
 	return eg.Wait()
 }
 
-func (t *Transformer) UpdateAccounts(ctx context.Context, data *BlockData, currentBlockHeight int64) error {
+func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight int64, data *BlockData, balances map[string][]schema.Coin) error {
 	now := time.Now()
 	dateKey := now.Format("2006-01-02")
 	newDeposits := make(map[string][]schema.DepositAction)
@@ -255,11 +241,30 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, data *BlockData, curre
 	return nil
 }
 
-func (t *Transformer) UpdateCoins(ctx context.Context, data *BlockData, blockHeight int64) error {
-	return nil
-}
-
-func (t *Transformer) UpdatePools(ctx context.Context, data *BlockData, blockHeight int64) error {
+func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight int64, data *BlockData, balances map[string][]schema.Coin) error {
+	var writes []mongo.WriteModel
+	for _, p := range data.Pools {
+		poolCoin := schema.Coin{
+			Denom:  p.PoolCoinDenom,
+			Amount: data.BankModuleState.Supply.AmountOf(p.PoolCoinDenom).Int64(),
+		}
+		writes = append(writes,
+			mongo.NewUpdateOneModel().
+				SetFilter(bson.M{
+					schema.PoolBlockHeightKey: currentBlockHeight + 1,
+					schema.PoolIDKey:          p.Id,
+				}).
+				SetUpdate(bson.M{
+					"$set": bson.M{
+						schema.PoolReserveCoins: balances[p.ReserveAccountAddress],
+						schema.PoolPoolCoinKey:  poolCoin,
+					},
+				}).
+				SetUpsert(true))
+	}
+	if _, err := t.PoolCollection().BulkWrite(ctx, writes); err != nil {
+		return fmt.Errorf("bulk write: %w", err)
+	}
 	return nil
 }
 
@@ -267,6 +272,18 @@ type BlockData struct {
 	BankModuleState banktypes.GenesisState `json:"bank_module_state"`
 	Events          sdk.Events             `json:"events"`
 	Pools           []liquiditytypes.Pool  `json:"pools"`
+}
+
+func (d *BlockData) Balances() map[string][]schema.Coin {
+	balances := make(map[string][]schema.Coin)
+	for _, b := range d.BankModuleState.Balances {
+		coins := []schema.Coin{}
+		for _, c := range b.Coins {
+			coins = append(coins, schema.Coin{Denom: c.Denom, Amount: c.Amount.Int64()})
+		}
+		balances[b.Address] = coins
+	}
+	return balances
 }
 
 func eventAttributeValue(event sdk.Event, key string) (string, bool) {
