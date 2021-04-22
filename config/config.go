@@ -3,18 +3,17 @@ package config
 import (
 	"os"
 
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
 var DefaultConfig = Config{
-	BindAddr: "0.0.0.0:8080",
-	Log:      zap.NewProductionConfig(),
+	Server:      DefaultServerConfig,
+	Transformer: DefaultTransformerConfig,
 }
 
 type Config struct {
-	BindAddr string     `yaml:"bind_addr"`
-	Log      zap.Config `yaml:"log"`
+	Server      ServerConfig      `yaml:"server"`
+	Transformer TransformerConfig `yaml:"transformer"`
 }
 
 func Load(path string) (Config, error) {
@@ -25,7 +24,7 @@ func Load(path string) (Config, error) {
 	defer f.Close()
 	cfg := DefaultConfig
 	if err := yaml.NewDecoder(f).Decode(&cfg); err != nil {
-		return cfg, err
+		return Config{}, err
 	}
 	return cfg, nil
 }
