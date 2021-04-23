@@ -286,8 +286,8 @@ func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight int64,
 }
 
 type BlockData struct {
-	BankModuleState banktypes.GenesisState `json:"bank_module_state"`
-	Events          sdk.Events             `json:"events"`
+	BankModuleState banktypes.GenesisState `json:"bank_module_states"`
+	Events          sdk.Events             `json:"end_block_events"`
 	Pools           []liquiditytypes.Pool  `json:"pools"`
 }
 
