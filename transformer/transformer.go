@@ -238,8 +238,10 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight int
 				}).
 				SetUpsert(true))
 	}
-	if _, err := t.AccountCollection().BulkWrite(ctx, writes); err != nil {
-		return fmt.Errorf("bulk write: %w", err)
+	if len(writes) > 0 {
+		if _, err := t.AccountCollection().BulkWrite(ctx, writes); err != nil {
+			return fmt.Errorf("bulk write: %w", err)
+		}
 	}
 	return nil
 }
@@ -275,8 +277,10 @@ func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight int64,
 				}).
 				SetUpsert(true))
 	}
-	if _, err := t.PoolCollection().BulkWrite(ctx, writes); err != nil {
-		return fmt.Errorf("bulk write: %w", err)
+	if len(writes) > 0 {
+		if _, err := t.PoolCollection().BulkWrite(ctx, writes); err != nil {
+			return fmt.Errorf("bulk write: %w", err)
+		}
 	}
 	return nil
 }
