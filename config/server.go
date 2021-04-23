@@ -7,33 +7,7 @@ import (
 )
 
 var DefaultServerConfig = ServerConfig{
-	BindAddr:         "0.0.0.0:8080",
-	StableCoinDenoms: []string{"run"},
-	StakingCoinDenoms: []string{
-		"atom",
-		"xrn",
-		"btsg",
-		"dvpn",
-		"xprt",
-		"akt",
-		"luna",
-		"ngm",
-		"gcyb",
-		"iris",
-	},
-	DenomMetadata: map[string]DenomMetadata{
-		"uatom": {"atom", 6},
-		"uxrn":  {"xrn", 6},
-		"ubtsg": {"btsg", 6},
-		"udvpn": {"dvpn", 6},
-		"uxprt": {"xprt", 6},
-		"uakt":  {"akt", 6},
-		"uluna": {"luna", 6},
-		"ungm":  {"ngm", 6},
-		"ugcyb": {"gcyb", 6},
-		"uiris": {"iris", 6},
-		"xrun":  {"run", 6},
-	},
+	BindAddr: "0.0.0.0:8080",
 	TradingDates: []string{
 		"2021-05-04",
 		"2021-05-05",

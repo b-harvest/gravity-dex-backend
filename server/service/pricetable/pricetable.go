@@ -40,11 +40,18 @@ func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (Table, e
 		t,
 		poolByPoolCoinDenom,
 	}
-	for poolCoinDenom := range poolByPoolCoinDenom {
-		if _, ok := t[poolCoinDenom]; !ok {
-			_, err := c.Price(poolCoinDenom)
+	denoms := append(s.cfg.StableCoinDenoms, s.cfg.StakingCoinDenoms...)
+	for denom := range s.cfg.DenomMetadata {
+		denoms = append(denoms, denom)
+	}
+	for denom := range poolByPoolCoinDenom {
+		denoms = append(denoms, denom)
+	}
+	for _, denom := range denoms {
+		if _, ok := t[denom]; !ok {
+			_, err := c.Price(denom)
 			if err != nil {
-				return nil, fmt.Errorf("get price of denom %q: %w", poolCoinDenom, err)
+				return nil, fmt.Errorf("get price of denom %q: %w", denom, err)
 			}
 		}
 	}
