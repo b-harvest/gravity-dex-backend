@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/stretchr/testify/require"
 
+	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
 )
 
@@ -15,9 +15,9 @@ func TestContext_Price(t *testing.T) {
 		stableCoinDenoms:  []string{"uusd"},
 		stakingCoinDenoms: []string{"atom", "luna"},
 		denomMetadata: map[string]config.DenomMetadata{
-			"uusd":  {"usd", 6},
-			"uatom": {"atom", 6},
-			"uluna": {"luna", 6},
+			"uusd":  {Display: "usd", Exponent: 6},
+			"uatom": {Display: "atom", Exponent: 6},
+			"uluna": {Display: "luna", Exponent: 6},
 		},
 		table: Table{
 			"atom": 20.0,
