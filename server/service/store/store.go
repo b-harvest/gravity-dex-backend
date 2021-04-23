@@ -46,6 +46,28 @@ func (s *Service) LatestBlockHeight(ctx context.Context) (int64, error) {
 	return cp.BlockHeight, nil
 }
 
+func (s *Service) IterateAccounts(ctx context.Context, blockHeight int64, cb func(schema.Account) (stop bool, err error)) error {
+	cur, err := s.AccountCollection().Find(ctx, bson.M{schema.AccountBlockHeightKey: blockHeight})
+	if err != nil {
+		return fmt.Errorf("find accounts: %w", err)
+	}
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		var acc schema.Account
+		if err := cur.Decode(&acc); err != nil {
+			return fmt.Errorf("decode account: %w", err)
+		}
+		stop, err := cb(acc)
+		if err != nil {
+			return err
+		}
+		if stop {
+			break
+		}
+	}
+	return nil
+}
+
 func (s *Service) Pools(ctx context.Context, blockHeight int64) ([]schema.Pool, error) {
 	cur, err := s.PoolCollection().Find(ctx, bson.M{schema.PoolBlockHeightKey: blockHeight})
 	if err != nil {
