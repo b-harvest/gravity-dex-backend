@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -244,6 +245,16 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight int
 func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight int64, data *BlockData, balances map[string][]schema.Coin) error {
 	var writes []mongo.WriteModel
 	for _, p := range data.Pools {
+		var reserveCoins []schema.Coin
+		for _, d := range p.ReserveCoinDenoms {
+			for _, c := range balances[p.ReserveAccountAddress] {
+				if c.Denom == d {
+					reserveCoins = append(reserveCoins, c)
+					break
+				}
+			}
+		}
+		sort.Slice(reserveCoins, func(i, j int) bool { return reserveCoins[i].Denom < reserveCoins[j].Denom })
 		poolCoin := schema.Coin{
 			Denom:  p.PoolCoinDenom,
 			Amount: data.BankModuleState.Supply.AmountOf(p.PoolCoinDenom).Int64(),
@@ -256,7 +267,7 @@ func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight int64,
 				}).
 				SetUpdate(bson.M{
 					"$set": bson.M{
-						schema.PoolReserveCoins: balances[p.ReserveAccountAddress],
+						schema.PoolReserveCoins: reserveCoins,
 						schema.PoolPoolCoinKey:  poolCoin,
 					},
 				}).
