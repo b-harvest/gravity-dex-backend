@@ -84,7 +84,7 @@ func (s *Server) GetScoreBoard(c echo.Context) error {
 		return err
 	}
 	sort.Slice(resp.Users, func(i, j int) bool { return resp.Users[i].TotalScore > resp.Users[j].TotalScore })
-	resp.Users = resp.Users[:s.cfg.ScoreBoardSize]
+	resp.Users = resp.Users[:minInt(s.cfg.ScoreBoardSize, len(resp.Users))]
 	return c.JSON(http.StatusOK, resp)
 }
 
