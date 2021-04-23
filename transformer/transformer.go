@@ -117,7 +117,9 @@ func (t *Transformer) PruneOldState(ctx context.Context, currentBlockHeight int6
 }
 
 func (t *Transformer) blockDataFilename(blockHeight int64) string {
-	return filepath.Join(t.cfg.BlockDataDir, fmt.Sprintf(t.cfg.BlockDataFilename, blockHeight))
+	bs := int64(t.cfg.BlockDataBucketSize)
+	p := blockHeight / bs * bs
+	return filepath.Join(t.cfg.BlockDataDir, fmt.Sprintf(t.cfg.BlockDataFilename, p, blockHeight))
 }
 
 func (t *Transformer) ReadBlockData(blockHeight int64) (*BlockData, error) {

@@ -8,7 +8,8 @@ import (
 )
 
 var DefaultTransformerConfig = TransformerConfig{
-	BlockDataFilename:        "%d.json",
+	BlockDataFilename:        "%08d/%d.json",
+	BlockDataBucketSize:      10000,
 	BlockDataWaitingInterval: 500 * time.Millisecond,
 	PruningOffset:            -2,
 	MongoDB:                  DefaultMongoDBConfig,
@@ -18,6 +19,7 @@ var DefaultTransformerConfig = TransformerConfig{
 type TransformerConfig struct {
 	BlockDataDir             string        `yaml:"block_data_dir"`
 	BlockDataFilename        string        `yaml:"block_data_filename"`
+	BlockDataBucketSize      int           `yaml:"block_data_bucket_size"`
 	BlockDataWaitingInterval time.Duration `yaml:"block_data_waiting_interval"`
 	PruningOffset            int           `yaml:"pruning_offset"`
 	MongoDB                  MongoDBConfig `yaml:"mongodb"`
