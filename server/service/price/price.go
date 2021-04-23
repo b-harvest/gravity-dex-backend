@@ -1,4 +1,4 @@
-package service
+package price
 
 import (
 	"context"
@@ -16,33 +16,33 @@ const (
 	apiKeyHeaderName = "X-CMC_PRO_API_KEY"
 )
 
-var _ PriceService = (*CoinMarketCapPriceService)(nil)
+var _ Service = (*CoinMarketCapService)(nil)
 
 type Price struct {
 	Symbol string
 	Price  float64
 }
 
-type PriceService interface {
+type Service interface {
 	Prices(ctx context.Context, symbols ...string) ([]Price, error)
 }
 
-type CoinMarketCapPriceService struct {
+type CoinMarketCapService struct {
 	apiBaseURL *url.URL
 	hc         *http.Client
 	apiKey     string
 }
 
-func NewCoinMarketCapPriceService(apiKey string) (PriceService, error) {
+func NewCoinMarketCapService(apiKey string) (Service, error) {
 	u, err := url.Parse(apiBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse api base url: %w", err)
 	}
 	hc := &http.Client{}
-	return &CoinMarketCapPriceService{u, hc, apiKey}, nil
+	return &CoinMarketCapService{u, hc, apiKey}, nil
 }
 
-func (s *CoinMarketCapPriceService) Prices(ctx context.Context, symbols ...string) ([]Price, error) {
+func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) ([]Price, error) {
 	r, err := s.request(ctx, "/v1/cryptocurrency/quotes/latest", url.Values{
 		"symbol": {strings.Join(symbols, ",")},
 		"aux":    {""},
@@ -67,14 +67,14 @@ func (s *CoinMarketCapPriceService) Prices(ctx context.Context, symbols ...strin
 			return nil, fmt.Errorf("price for symbol %q not found", symbol)
 		}
 		ps = append(ps, Price{
-			Symbol: symbol,
+			Symbol: strings.ToLower(symbol),
 			Price:  d.Quote.USD.Price,
 		})
 	}
 	return ps, nil
 }
 
-func (s *CoinMarketCapPriceService) request(ctx context.Context, path string, params url.Values) (*CoinMarketCapResponse, error) {
+func (s *CoinMarketCapService) request(ctx context.Context, path string, params url.Values) (*CoinMarketCapResponse, error) {
 	u, err := s.apiBaseURL.Parse(path)
 	if err != nil {
 		return nil, fmt.Errorf("resolve url for path: %w", err)

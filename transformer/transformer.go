@@ -27,12 +27,12 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Transformer struct {
 	cfg    config.TransformerConfig
-	logger *zap.Logger
 	mc     *mongo.Client
+	logger *zap.Logger
 }
 
-func New(cfg config.TransformerConfig, logger *zap.Logger, mc *mongo.Client) (*Transformer, error) {
-	return &Transformer{cfg, logger, mc}, nil
+func New(cfg config.TransformerConfig, mc *mongo.Client, logger *zap.Logger) (*Transformer, error) {
+	return &Transformer{cfg, mc, logger}, nil
 }
 
 func (t *Transformer) CheckpointCollection() *mongo.Collection {

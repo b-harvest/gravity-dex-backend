@@ -28,3 +28,19 @@ func Load(path string) (Config, error) {
 	}
 	return cfg, nil
 }
+
+var DefaultMongoDBConfig = MongoDBConfig{
+	URI:                  "mongodb://localhost",
+	DB:                   "gdex",
+	CheckpointCollection: "checkpoint",
+	AccountCollection:    "accounts",
+	PoolCollection:       "pools",
+}
+
+type MongoDBConfig struct {
+	URI                  string `yaml:"uri"`
+	DB                   string `yaml:"db"`
+	CheckpointCollection string `yaml:"checkpoint_collection"`
+	AccountCollection    string `yaml:"account_collection"`
+	PoolCollection       string `yaml:"pool_collection"`
+}

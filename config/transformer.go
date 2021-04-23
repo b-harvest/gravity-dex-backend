@@ -11,14 +11,8 @@ var DefaultTransformerConfig = TransformerConfig{
 	BlockDataFilename:        "%d.json",
 	BlockDataWaitingInterval: 500 * time.Millisecond,
 	PruningOffset:            -2,
-	MongoDB: MongoDBConfig{
-		URI:                  "mongodb://localhost",
-		DB:                   "gdex",
-		CheckpointCollection: "checkpoint",
-		AccountCollection:    "accounts",
-		PoolCollection:       "pools",
-	},
-	Log: zap.NewProductionConfig(),
+	MongoDB:                  DefaultMongoDBConfig,
+	Log:                      zap.NewProductionConfig(),
 }
 
 type TransformerConfig struct {
@@ -28,14 +22,6 @@ type TransformerConfig struct {
 	PruningOffset            int           `yaml:"pruning_offset"`
 	MongoDB                  MongoDBConfig `yaml:"mongodb"`
 	Log                      zap.Config    `yaml:"log"`
-}
-
-type MongoDBConfig struct {
-	URI                  string `yaml:"uri"`
-	DB                   string `yaml:"db"`
-	CheckpointCollection string `yaml:"checkpoint_collection"`
-	AccountCollection    string `yaml:"account_collection"`
-	PoolCollection       string `yaml:"pool_collection"`
 }
 
 func (cfg TransformerConfig) Validate() error {
