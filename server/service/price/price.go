@@ -18,13 +18,10 @@ const (
 
 var _ Service = (*CoinMarketCapService)(nil)
 
-type Price struct {
-	Symbol string
-	Price  float64
-}
+type Table map[string]float64
 
 type Service interface {
-	Prices(ctx context.Context, symbols ...string) ([]Price, error)
+	Prices(ctx context.Context, symbols ...string) (Table, error)
 }
 
 type CoinMarketCapService struct {
@@ -42,7 +39,7 @@ func NewCoinMarketCapService(apiKey string) (Service, error) {
 	return &CoinMarketCapService{u, hc, apiKey}, nil
 }
 
-func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) ([]Price, error) {
+func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) (Table, error) {
 	r, err := s.request(ctx, "/v1/cryptocurrency/quotes/latest", url.Values{
 		"symbol": {strings.Join(symbols, ",")},
 		"aux":    {""},
@@ -60,18 +57,15 @@ func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) ([
 	if err := json.Unmarshal(r.Data, &data); err != nil {
 		return nil, fmt.Errorf("unmarshal data: %w", err)
 	}
-	var ps []Price
+	t := make(Table)
 	for _, symbol := range symbols {
 		d, ok := data[strings.ToUpper(symbol)]
 		if !ok {
 			return nil, fmt.Errorf("price for symbol %q not found", symbol)
 		}
-		ps = append(ps, Price{
-			Symbol: strings.ToLower(symbol),
-			Price:  d.Quote.USD.Price,
-		})
+		t[strings.ToLower(symbol)] = d.Quote.USD.Price
 	}
-	return ps, nil
+	return t, nil
 }
 
 func (s *CoinMarketCapService) request(ctx context.Context, path string, params url.Values) (*CoinMarketCapResponse, error) {

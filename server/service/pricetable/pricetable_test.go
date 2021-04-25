@@ -19,7 +19,7 @@ func TestContext_Price(t *testing.T) {
 			"uatom": {Display: "atom", Exponent: 6},
 			"uluna": {Display: "luna", Exponent: 6},
 		},
-		table: Table{
+		priceTable: Table{
 			"atom": 20.0,
 			"luna": 10.0,
 		},

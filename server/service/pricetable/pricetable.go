@@ -20,14 +20,10 @@ func NewService(cfg config.ServerConfig, ps price.Service) *Service {
 	return &Service{cfg, ps}
 }
 
-func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (Table, error) {
-	ps, err := s.ps.Prices(ctx, s.cfg.StakingCoinDenoms...)
+func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (price.Table, error) {
+	t, err := s.ps.Prices(ctx, s.cfg.StakingCoinDenoms...)
 	if err != nil {
 		return nil, fmt.Errorf("get prices: %w", err)
-	}
-	t := make(Table)
-	for _, p := range ps {
-		t[p.Symbol] = p.Price
 	}
 	poolByPoolCoinDenom := make(map[string]*schema.Pool)
 	for _, p := range pools {
@@ -55,16 +51,14 @@ func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (Table, e
 			}
 		}
 	}
-	return c.table, nil
+	return c.priceTable, nil
 }
-
-type Table map[string]float64
 
 type Context struct {
 	stableCoinDenoms  []string
 	stakingCoinDenoms []string
 	denomMetadata     map[string]config.DenomMetadata
-	table             Table
+	priceTable        price.Table
 	pools             map[string]*schema.Pool
 }
 
@@ -85,13 +79,13 @@ func (c *Context) IsPoolCoinDenom(denom string) bool {
 }
 
 func (c *Context) Price(denom string) (float64, error) {
-	p, ok := c.table[denom]
+	p, ok := c.priceTable[denom]
 	if !ok {
 		switch {
 		case c.IsStableCoinDenom(denom):
 			p = 1
 		case c.IsStakingCoinDenom(denom):
-			return 0, fmt.Errorf("staking coin denom %q's price must be in table", denom)
+			return 0, fmt.Errorf("staking coin denom %q's price must be in price table", denom)
 		case c.IsPoolCoinDenom(denom):
 			pool := c.pools[denom]
 			sum := 0.0
@@ -114,7 +108,7 @@ func (c *Context) Price(denom string) (float64, error) {
 			}
 			p = tp / math.Pow10(md.Exponent)
 		}
-		c.table[denom] = p
+		c.priceTable[denom] = p
 	}
 	return p, nil
 }

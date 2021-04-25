@@ -88,7 +88,7 @@ func (s *Server) GetScoreBoard(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-func (s *Server) tradingScore(acc schema.Account, priceTable pricetable.Table) (float64, error) {
+func (s *Server) tradingScore(acc schema.Account, priceTable price.Table) (float64, error) {
 	denoms := make(map[string]struct{})
 	for _, d := range s.cfg.AvailableDenoms() {
 		denoms[d] = struct{}{}
