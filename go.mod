@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/cosmos/cosmos-sdk v0.42.4
+	github.com/gomodule/redigo v1.8.4
 	github.com/json-iterator/go v1.1.10
 	github.com/labstack/echo/v4 v4.2.2
 	github.com/spf13/cobra v1.1.3

@@ -8,6 +8,7 @@ import (
 
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
+	"github.com/b-harvest/gravity-dex-backend/server/service/price"
 )
 
 func TestContext_Price(t *testing.T) {
@@ -19,7 +20,7 @@ func TestContext_Price(t *testing.T) {
 			"uatom": {Display: "atom", Exponent: 6},
 			"uluna": {Display: "luna", Exponent: 6},
 		},
-		priceTable: Table{
+		priceTable: price.Table{
 			"atom": 20.0,
 			"luna": 10.0,
 		},

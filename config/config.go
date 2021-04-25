@@ -44,3 +44,15 @@ type MongoDBConfig struct {
 	AccountCollection    string `yaml:"account_collection"`
 	PoolCollection       string `yaml:"pool_collection"`
 }
+
+var DefaultRedisConfig = RedisConfig{
+	URI:                "redis://localhost",
+	ScoreBoardCacheKey: "gdex:score_board",
+	PriceTableCacheKey: "gdex:price_table",
+}
+
+type RedisConfig struct {
+	URI                string `yaml:"uri"`
+	ScoreBoardCacheKey string `yaml:"score_board_cache_key"`
+	PriceTableCacheKey string `yaml:"price_table_cache_key"`
+}

@@ -2,11 +2,13 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 )
 
 var DefaultServerConfig = ServerConfig{
+	Debug:    false,
 	BindAddr: "0.0.0.0:8080",
 	TradingDates: []string{
 		"2021-05-04",
@@ -21,11 +23,15 @@ var DefaultServerConfig = ServerConfig{
 	InitialBalancesValue: 30000,
 	TradingScoreRatio:    0.9,
 	ScoreBoardSize:       100,
+	CacheLoadTimeout:     10 * time.Second,
+	CacheUpdateInterval:  5 * time.Second,
 	MongoDB:              DefaultMongoDBConfig,
+	Redis:                DefaultRedisConfig,
 	Log:                  zap.NewProductionConfig(),
 }
 
 type ServerConfig struct {
+	Debug                bool                     `yaml:"debug"`
 	BindAddr             string                   `yaml:"bind_addr"`
 	StableCoinDenoms     []string                 `yaml:"stable_coin_denoms"`
 	StakingCoinDenoms    []string                 `yaml:"staking_coin_denoms"`
@@ -36,7 +42,10 @@ type ServerConfig struct {
 	InitialBalancesValue float64                  `yaml:"initial_balances_value"`
 	TradingScoreRatio    float64                  `yaml:"trading_score_ratio"`
 	ScoreBoardSize       int                      `yaml:"score_board_size"`
+	CacheLoadTimeout     time.Duration            `yaml:"cache_load_timeout"`
+	CacheUpdateInterval  time.Duration            `yaml:"cache_update_interval"`
 	MongoDB              MongoDBConfig            `yaml:"mongodb"`
+	Redis                RedisConfig              `yaml:"redis"`
 	Log                  zap.Config               `yaml:"log"`
 }
 

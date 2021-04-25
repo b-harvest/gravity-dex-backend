@@ -9,6 +9,7 @@ import (
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
 	"github.com/b-harvest/gravity-dex-backend/server/service/price"
+	"github.com/b-harvest/gravity-dex-backend/util"
 )
 
 type Service struct {
@@ -63,11 +64,11 @@ type Context struct {
 }
 
 func (c *Context) IsStableCoinDenom(denom string) bool {
-	return stringInSlice(denom, c.stableCoinDenoms)
+	return util.StringInSlice(denom, c.stableCoinDenoms)
 }
 
 func (c *Context) IsStakingCoinDenom(denom string) bool {
-	return stringInSlice(denom, c.stakingCoinDenoms)
+	return util.StringInSlice(denom, c.stakingCoinDenoms)
 }
 
 func (c *Context) IsPoolCoinDenom(denom string) bool {

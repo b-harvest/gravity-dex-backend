@@ -21,6 +21,7 @@ import (
 
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
+	"github.com/b-harvest/gravity-dex-backend/util"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -136,7 +137,7 @@ func (t *Transformer) ReadBlockData(blockHeight int64) (*BlockData, error) {
 }
 
 func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64) (*BlockData, error) {
-	ticker := newImmediateTicker(t.cfg.BlockDataWaitingInterval)
+	ticker := util.NewImmediateTicker(t.cfg.BlockDataWaitingInterval)
 	for {
 		select {
 		case <-ctx.Done():
