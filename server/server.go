@@ -37,6 +37,7 @@ func New(cfg config.ServerConfig, ss *store.Service, ps price.Service, pts *pric
 	e.Debug = cfg.Debug
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 	s := &Server{e, cfg, ss, ps, pts, rp, logger}
 	s.registerRoutes()
 	return s
