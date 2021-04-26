@@ -45,23 +45,42 @@ $ gdex server
 
 #### Request
 
-`GET /scoreboard`
+`GET /scoreboard?address=<string>`
+
+`address` query parameter is optional.
+If specified, `me` field is returned together in response.
 
 #### Response
 
 ```
 {
+  "blockHeight" <int>,
+  "me": { // optional
+    "ranking": <int>,
+    "username": <string>,
+    "address": <string>,
+    "totalScore": <float>,
+    "tradingScore": <float>,
+    "actionScore": <float>
+  }
   "accounts": [
     {
+      "ranking": <int>
       "username": <string>,
       "address": <string>,
       "totalScore": <float>,
       "tradingScore": <float>,
       "actionScore": <float>
     }
-  ]
+  ],
+  "updatedAt": <string>
 }
 ```
+
+#### Errors
+
+- `404 "account not found"`: Specified account address does not exist in score board.
+- `500 "no score board data found"`: There is no server cache of score board.
 
 ### Price Table
 
@@ -92,3 +111,7 @@ $ gdex server
   ]
 }
 ```
+
+#### Errors
+
+- `500 "no price table data found"`: There is no server cache of price table.
