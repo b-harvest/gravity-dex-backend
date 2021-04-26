@@ -127,7 +127,7 @@ func (s *Server) GetPriceTable(c echo.Context) error {
 		return err
 	}, s.cfg.CacheLoadTimeout); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "no score board data found")
+			return echo.NewHTTPError(http.StatusInternalServerError, "no price table data found")
 		}
 		return fmt.Errorf("load cache: %w", err)
 	}
