@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -185,13 +186,35 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight int
 			if !ok {
 				return fmt.Errorf("attr %q not found", liquiditytypes.AttributeValueDepositor)
 			}
-			newDeposits[addr] = append(newDeposits[addr], schema.DepositAction{Timestamp: now})
+			v, ok := eventAttributeValue(evt, liquiditytypes.AttributeValuePoolId)
+			if !ok {
+				return fmt.Errorf("attr %q not found", liquiditytypes.AttributeValuePoolId)
+			}
+			poolID, err := strconv.ParseUint(v, 10, 64)
+			if err != nil {
+				return fmt.Errorf("parse attr %q", liquiditytypes.AttributeValuePoolId)
+			}
+			newDeposits[addr] = append(newDeposits[addr], schema.DepositAction{
+				PoolID:    poolID,
+				Timestamp: now,
+			})
 		case liquiditytypes.EventTypeSwapTransacted:
 			addr, ok := eventAttributeValue(evt, liquiditytypes.AttributeValueSwapRequester)
 			if !ok {
 				return fmt.Errorf("attr %q not found", liquiditytypes.AttributeValueSwapRequester)
 			}
-			newSwaps[addr] = append(newSwaps[addr], schema.SwapAction{Timestamp: now})
+			v, ok := eventAttributeValue(evt, liquiditytypes.AttributeValuePoolId)
+			if !ok {
+				return fmt.Errorf("attr %q not found", liquiditytypes.AttributeValuePoolId)
+			}
+			poolID, err := strconv.ParseUint(v, 10, 64)
+			if err != nil {
+				return fmt.Errorf("parse attr %q", liquiditytypes.AttributeValuePoolId)
+			}
+			newSwaps[addr] = append(newSwaps[addr], schema.SwapAction{
+				PoolID:    poolID,
+				Timestamp: now,
+			})
 		}
 	}
 	var writes []mongo.WriteModel

@@ -14,6 +14,7 @@ type ScoreBoardAccount struct {
 	TotalScore   float64 `json:"totalScore"`
 	TradingScore float64 `json:"tradingScore"`
 	ActionScore  float64 `json:"actionScore"`
+	IsValid      bool    `json:"isValid"`
 }
 
 type PriceTableResponse struct {

@@ -39,10 +39,12 @@ type ActionState struct {
 }
 
 type SwapAction struct {
+	PoolID    uint64    `bson:"poolID"`
 	Timestamp time.Time `bson:"timestamp"`
 }
 
 type DepositAction struct {
+	PoolID    uint64    `bson:"poolID"`
 	Timestamp time.Time `bson:"timestamp"`
 }
 

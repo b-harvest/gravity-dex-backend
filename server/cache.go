@@ -27,19 +27,25 @@ func (s *Server) UpdateScoreBoardCache(ctx context.Context, blockHeight int64, p
 		if err != nil {
 			return true, fmt.Errorf("calculate trading score for account %q: %w", acc.Address, err)
 		}
-		as := s.actionScore(acc)
+		as, valid := s.actionScore(acc)
 		resp.Accounts = append(resp.Accounts, schema.ScoreBoardAccount{
 			Username:     acc.Username,
 			Address:      acc.Address,
 			TotalScore:   ts*s.cfg.TradingScoreRatio + as*(1-s.cfg.TradingScoreRatio),
 			TradingScore: ts,
 			ActionScore:  as,
+			IsValid:      valid,
 		})
 		return false, nil
 	}); err != nil {
 		return err
 	}
-	sort.Slice(resp.Accounts, func(i, j int) bool { return resp.Accounts[i].TotalScore > resp.Accounts[j].TotalScore })
+	sort.SliceStable(resp.Accounts, func(i, j int) bool {
+		if resp.Accounts[i].IsValid != resp.Accounts[j].IsValid {
+			return resp.Accounts[i].IsValid
+		}
+		return resp.Accounts[i].TotalScore > resp.Accounts[j].TotalScore
+	})
 	resp.Accounts = resp.Accounts[:util.MinInt(s.cfg.ScoreBoardSize, len(resp.Accounts))]
 	resp.UpdatedAt = time.Now()
 	if err := s.SaveScoreBoardCache(ctx, resp); err != nil {
