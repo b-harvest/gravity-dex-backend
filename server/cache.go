@@ -46,7 +46,9 @@ func (s *Server) UpdateScoreBoardCache(ctx context.Context, blockHeight int64, p
 		}
 		return resp.Accounts[i].TotalScore > resp.Accounts[j].TotalScore
 	})
-	resp.Accounts = resp.Accounts[:util.MinInt(s.cfg.ScoreBoardSize, len(resp.Accounts))]
+	for i := range resp.Accounts {
+		resp.Accounts[i].Ranking = i + 1
+	}
 	resp.UpdatedAt = time.Now()
 	if err := s.SaveScoreBoardCache(ctx, resp); err != nil {
 		return fmt.Errorf("save cache: %w", err)

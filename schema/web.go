@@ -2,13 +2,19 @@ package schema
 
 import "time"
 
+type ScoreBoardRequest struct {
+	Address string `query:"address"`
+}
+
 type ScoreBoardResponse struct {
 	BlockHeight int64               `json:"blockHeight"`
+	Me          *ScoreBoardAccount  `json:"me,omitempty"`
 	Accounts    []ScoreBoardAccount `json:"accounts"`
 	UpdatedAt   time.Time           `json:"updatedAt"`
 }
 
 type ScoreBoardAccount struct {
+	Ranking      int     `json:"ranking"`
 	Username     string  `json:"username"`
 	Address      string  `json:"address"`
 	TotalScore   float64 `json:"totalScore"`

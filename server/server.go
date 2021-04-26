@@ -49,6 +49,10 @@ func (s *Server) registerRoutes() {
 }
 
 func (s *Server) GetScoreBoard(c echo.Context) error {
+	var req schema.ScoreBoardRequest
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
 	var resp schema.ScoreBoardResponse
 	if err := RetryLoadingCache(c.Request().Context(), func(ctx context.Context) error {
 		var err error
@@ -60,6 +64,20 @@ func (s *Server) GetScoreBoard(c echo.Context) error {
 		}
 		return fmt.Errorf("load cache: %w", err)
 	}
+	var me *schema.ScoreBoardAccount
+	if req.Address != "" {
+		for _, acc := range resp.Accounts {
+			if acc.Address == req.Address {
+				me = &acc
+				break
+			}
+		}
+		if me == nil {
+			return echo.NewHTTPError(http.StatusNotFound, "account not found")
+		}
+		resp.Me = me
+	}
+	resp.Accounts = resp.Accounts[:util.MinInt(s.cfg.ScoreBoardSize, len(resp.Accounts))]
 	return c.JSON(http.StatusOK, resp)
 }
 
