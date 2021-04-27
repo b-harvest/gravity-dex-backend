@@ -55,7 +55,7 @@ var DefaultServerConfig = ServerConfig{
 	TradingScoreRatio:    0.9,
 	ScoreBoardSize:       100,
 	CacheLoadTimeout:     10 * time.Second,
-	CacheUpdateInterval:  5 * time.Second,
+	CacheUpdateInterval:  10 * time.Second,
 	MongoDB:              DefaultMongoDBConfig,
 	Redis:                DefaultRedisConfig,
 	Log:                  zap.NewProductionConfig(),
