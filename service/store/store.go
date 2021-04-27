@@ -13,24 +13,48 @@ import (
 )
 
 type Service struct {
-	cfg config.ServerConfig
+	cfg config.MongoDBConfig
 	mc  *mongo.Client
 }
 
-func NewService(cfg config.ServerConfig, mc *mongo.Client) *Service {
+func NewService(cfg config.MongoDBConfig, mc *mongo.Client) *Service {
 	return &Service{cfg, mc}
 }
 
 func (s *Service) CheckpointCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.MongoDB.DB).Collection(s.cfg.MongoDB.CheckpointCollection)
+	return s.mc.Database(s.cfg.DB).Collection(s.cfg.CheckpointCollection)
 }
 
 func (s *Service) AccountCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.MongoDB.DB).Collection(s.cfg.MongoDB.AccountCollection)
+	return s.mc.Database(s.cfg.DB).Collection(s.cfg.AccountCollection)
 }
 
 func (s *Service) PoolCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.MongoDB.DB).Collection(s.cfg.MongoDB.PoolCollection)
+	return s.mc.Database(s.cfg.DB).Collection(s.cfg.PoolCollection)
+}
+
+func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
+	var res []string
+	for _, x := range []struct {
+		coll *mongo.Collection
+		is   []mongo.IndexModel
+	}{
+		{s.AccountCollection(), []mongo.IndexModel{
+			{Keys: bson.M{schema.AccountBlockHeightKey: 1}},
+			{Keys: bson.M{schema.AccountBlockHeightKey: 1, schema.AccountAddressKey: 1}},
+		}},
+		{s.PoolCollection(), []mongo.IndexModel{
+			{Keys: bson.M{schema.PoolBlockHeightKey: 1}},
+			{Keys: bson.M{schema.PoolBlockHeightKey: 1, schema.PoolIDKey: 1}},
+		}},
+	} {
+		names, err := x.coll.Indexes().CreateMany(ctx, x.is)
+		if err != nil {
+			return res, err
+		}
+		res = append(res, names...)
+	}
+	return res, nil
 }
 
 func (s *Service) LatestBlockHeight(ctx context.Context) (int64, error) {

@@ -18,9 +18,9 @@ import (
 
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/server"
-	"github.com/b-harvest/gravity-dex-backend/server/service/price"
-	"github.com/b-harvest/gravity-dex-backend/server/service/pricetable"
-	"github.com/b-harvest/gravity-dex-backend/server/service/store"
+	"github.com/b-harvest/gravity-dex-backend/service/price"
+	"github.com/b-harvest/gravity-dex-backend/service/pricetable"
+	"github.com/b-harvest/gravity-dex-backend/service/store"
 )
 
 func ServerCmd() *cobra.Command {
@@ -63,7 +63,7 @@ func ServerCmd() *cobra.Command {
 			}
 			conn.Close()
 
-			ss := store.NewService(cfg.Server, mc)
+			ss := store.NewService(cfg.Server.MongoDB, mc)
 			ps, err := price.NewCoinMarketCapService(cfg.Server.CoinMarketCapAPIKey)
 			if err != nil {
 				return fmt.Errorf("new coinmarketcap service: %w", err)
@@ -71,11 +71,17 @@ func ServerCmd() *cobra.Command {
 			pts := pricetable.NewService(cfg.Server, ps)
 			s := server.New(cfg.Server, ss, ps, pts, rp, logger)
 
+			names, err := ss.EnsureDBIndexes(context.Background())
+			if err != nil {
+				return fmt.Errorf("ensure db indexes: %w", err)
+			}
+			logger.Info("created db indexes", zap.Strings("names", names))
+			logger.Info("starting server", zap.String("addr", cfg.Server.BindAddr))
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			eg, ctx2 := errgroup.WithContext(ctx)
 			eg.Go(func() error {
-				logger.Info("starting server", zap.String("addr", cfg.Server.BindAddr))
 				if err := s.Start(cfg.Server.BindAddr); err != nil && !errors.Is(err, http.ErrServerClosed) {
 					return fmt.Errorf("run server: %w", err)
 				}

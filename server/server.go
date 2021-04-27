@@ -14,9 +14,9 @@ import (
 
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
-	"github.com/b-harvest/gravity-dex-backend/server/service/price"
-	"github.com/b-harvest/gravity-dex-backend/server/service/pricetable"
-	"github.com/b-harvest/gravity-dex-backend/server/service/store"
+	"github.com/b-harvest/gravity-dex-backend/service/price"
+	"github.com/b-harvest/gravity-dex-backend/service/pricetable"
+	"github.com/b-harvest/gravity-dex-backend/service/store"
 	"github.com/b-harvest/gravity-dex-backend/util"
 )
 

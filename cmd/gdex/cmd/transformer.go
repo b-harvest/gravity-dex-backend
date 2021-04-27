@@ -10,8 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 
 	"github.com/b-harvest/gravity-dex-backend/config"
+	"github.com/b-harvest/gravity-dex-backend/service/store"
 	"github.com/b-harvest/gravity-dex-backend/transformer"
 )
 
@@ -46,6 +48,13 @@ func TransformerCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("new transformer: %w", err)
 			}
+
+			ss := store.NewService(cfg.Transformer.MongoDB, mc)
+			names, err := ss.EnsureDBIndexes(context.Background())
+			if err != nil {
+				return fmt.Errorf("ensure db indexes: %w", err)
+			}
+			logger.Info("created db indexes", zap.Strings("names", names))
 
 			logger.Info("started")
 
