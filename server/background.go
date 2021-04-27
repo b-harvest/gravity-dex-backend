@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/b-harvest/gravity-dex-backend/util"
@@ -18,7 +19,7 @@ func (s *Server) RunBackgroundUpdater(ctx context.Context) error {
 		case <-ticker.C:
 			s.logger.Debug("updating caches")
 			if err := s.UpdateCaches(ctx); err != nil {
-				return fmt.Errorf("update caches: %w", err)
+				s.logger.Error("failed to update caches", zap.Error(err))
 			}
 		}
 	}
