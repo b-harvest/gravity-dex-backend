@@ -86,32 +86,23 @@ If specified, `me` field is returned together in response.
 
 #### Request
 
-`GET /pricetable`
+`GET /prices`
 
 #### Response
 
 ```
 {
-  "pools": [
+  "blockHeight": <int>,
+  "coins": [
     {
-      "id": <uint64>,
-      "reserveCoins": [
-        {
-          "denom": <string>, // lowercased
-          "amount": <int>,
-          "globalPrice": <float>
-        },
-        {
-          "denom": <string>,
-          "amount": <int>,
-          "globalPrice": <float>
-        }
-      ],
+      "denom": <string>,
+      "globalPrice": <float>
     }
-  ]
+  ],
+  "updatedAt": <string>
 }
 ```
 
 #### Errors
 
-- `500 "no price table data found"`: There is no server cache of price table.
+- `500 "no prices data found"`: There is no server cache of prices.

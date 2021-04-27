@@ -56,27 +56,16 @@ func (s *Server) UpdateScoreBoardCache(ctx context.Context, blockHeight int64, p
 	return nil
 }
 
-func (s *Server) UpdatePriceTableCache(ctx context.Context, blockHeight int64, pools []schema.Pool, priceTable price.Table) error {
-	resp := schema.PriceTableResponse{
+func (s *Server) UpdatePricesCache(ctx context.Context, blockHeight int64, priceTable price.Table) error {
+	resp := schema.PricesResponse{
 		BlockHeight: blockHeight,
-		Pools:       []schema.PriceTablePool{},
+		Coins:       []schema.PricesResponseCoin{},
 	}
-	for _, p := range pools {
-		var reserveCoins []schema.PriceTableReserveCoin
-		for _, rc := range p.ReserveCoins {
-			reserveCoins = append(reserveCoins, schema.PriceTableReserveCoin{
-				Denom:       rc.Denom,
-				Amount:      rc.Amount,
-				GlobalPrice: priceTable[rc.Denom],
-			})
-		}
-		resp.Pools = append(resp.Pools, schema.PriceTablePool{
-			ID:           p.ID,
-			ReserveCoins: reserveCoins,
-		})
+	for denom, p := range priceTable {
+		resp.Coins = append(resp.Coins, schema.PricesResponseCoin{Denom: denom, GlobalPrice: p})
 	}
 	resp.UpdatedAt = time.Now()
-	if err := s.SavePriceTableCache(ctx, resp); err != nil {
+	if err := s.SavePricesCache(ctx, resp); err != nil {
 		return fmt.Errorf("save cache: %w", err)
 	}
 	return nil
@@ -109,8 +98,8 @@ func (s *Server) SaveScoreBoardCache(ctx context.Context, resp schema.ScoreBoard
 	return s.SaveCache(ctx, s.cfg.Redis.ScoreBoardCacheKey, resp)
 }
 
-func (s *Server) SavePriceTableCache(ctx context.Context, resp schema.PriceTableResponse) error {
-	return s.SaveCache(ctx, s.cfg.Redis.PriceTableCacheKey, resp)
+func (s *Server) SavePricesCache(ctx context.Context, resp schema.PricesResponse) error {
+	return s.SaveCache(ctx, s.cfg.Redis.PricesCacheKey, resp)
 }
 
 func (s *Server) LoadScoreBoardCache(ctx context.Context) (resp schema.ScoreBoardResponse, err error) {
@@ -125,8 +114,8 @@ func (s *Server) LoadScoreBoardCache(ctx context.Context) (resp schema.ScoreBoar
 	return
 }
 
-func (s *Server) LoadPriceTableCache(ctx context.Context) (resp schema.PriceTableResponse, err error) {
-	b, err := s.LoadCache(ctx, s.cfg.Redis.PriceTableCacheKey)
+func (s *Server) LoadPricesCache(ctx context.Context) (resp schema.PricesResponse, err error) {
+	b, err := s.LoadCache(ctx, s.cfg.Redis.PricesCacheKey)
 	if err != nil {
 		return resp, err
 	}

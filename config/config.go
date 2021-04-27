@@ -49,13 +49,13 @@ type MongoDBConfig struct {
 var DefaultRedisConfig = RedisConfig{
 	URI:                "redis://localhost",
 	ScoreBoardCacheKey: "gdex:score_board",
-	PriceTableCacheKey: "gdex:price_table",
+	PricesCacheKey:     "gdex:prices",
 }
 
 type RedisConfig struct {
 	URI                string `yaml:"uri"`
 	ScoreBoardCacheKey string `yaml:"score_board_cache_key"`
-	PriceTableCacheKey string `yaml:"price_table_cache_key"`
+	PricesCacheKey     string `yaml:"prices_cache_key"`
 }
 
 var DefaultCoinMarketCapConfig = CoinMarketCapConfig{

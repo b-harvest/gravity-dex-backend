@@ -46,7 +46,7 @@ func New(cfg config.ServerConfig, ss *store.Service, ps price.Service, pts *pric
 func (s *Server) registerRoutes() {
 	s.GET("/status", s.GetStatus)
 	s.GET("/scoreboard", s.GetScoreBoard)
-	s.GET("/pricetable", s.GetPriceTable)
+	s.GET("/prices", s.GetPrices)
 }
 
 func (s *Server) GetStatus(c echo.Context) error {
@@ -130,15 +130,15 @@ func (s *Server) actionScore(acc schema.Account) (score float64, valid bool) {
 	return
 }
 
-func (s *Server) GetPriceTable(c echo.Context) error {
-	var resp schema.PriceTableResponse
+func (s *Server) GetPrices(c echo.Context) error {
+	var resp schema.PricesResponse
 	if err := RetryLoadingCache(c.Request().Context(), func(ctx context.Context) error {
 		var err error
-		resp, err = s.LoadPriceTableCache(ctx)
+		resp, err = s.LoadPricesCache(ctx)
 		return err
 	}, s.cfg.CacheLoadTimeout); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "no price table data found")
+			return echo.NewHTTPError(http.StatusInternalServerError, "no prices data found")
 		}
 		return fmt.Errorf("load cache: %w", err)
 	}

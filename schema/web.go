@@ -27,19 +27,13 @@ type ScoreBoardAccount struct {
 	IsValid      bool    `json:"isValid"`
 }
 
-type PriceTableResponse struct {
-	BlockHeight int64            `json:"blockHeight"`
-	Pools       []PriceTablePool `json:"pools"`
-	UpdatedAt   time.Time        `json:"updatedAt"`
+type PricesResponse struct {
+	BlockHeight int64                `json:"blockHeight"`
+	Coins       []PricesResponseCoin `json:"coins"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
 }
 
-type PriceTablePool struct {
-	ID           uint64                  `json:"id"`
-	ReserveCoins []PriceTableReserveCoin `json:"reserveCoins"`
-}
-
-type PriceTableReserveCoin struct {
+type PricesResponseCoin struct {
 	Denom       string  `json:"denom"`
-	Amount      int64   `json:"amount"`
 	GlobalPrice float64 `json:"globalPrice"`
 }
