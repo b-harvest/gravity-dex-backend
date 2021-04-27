@@ -49,6 +49,9 @@ func ServerCmd() *cobra.Command {
 				return fmt.Errorf("connect mongodb: %w", err)
 			}
 			defer mc.Disconnect(context.Background())
+			if err := mc.Ping(context.Background(), nil); err != nil {
+				return fmt.Errorf("ping mongodb: %w", err)
+			}
 
 			rp := &redis.Pool{
 				Dial: func() (redis.Conn, error) {

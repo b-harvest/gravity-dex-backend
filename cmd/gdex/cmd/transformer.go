@@ -43,6 +43,9 @@ func TransformerCmd() *cobra.Command {
 				return fmt.Errorf("connect mongodb: %w", err)
 			}
 			defer mc.Disconnect(context.Background())
+			if err := mc.Ping(context.Background(), nil); err != nil {
+				return fmt.Errorf("ping mongodb: %w", err)
+			}
 
 			t, err := transformer.New(cfg.Transformer, mc, logger)
 			if err != nil {
