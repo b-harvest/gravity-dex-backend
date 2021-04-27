@@ -111,9 +111,14 @@ If specified, `me` field is returned together in response.
       ]
     },
     ...
-  ]
+  ],
+  "updatedAt": <string>
 }
 ```
+
+#### Errors
+
+- `500 "no pool data found"`: There is no server cache of pools.
 
 ### Price Table
 
