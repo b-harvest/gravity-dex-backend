@@ -40,12 +40,12 @@ func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
 		is   []mongo.IndexModel
 	}{
 		{s.AccountCollection(), []mongo.IndexModel{
-			{Keys: bson.M{schema.AccountBlockHeightKey: 1}},
-			{Keys: bson.M{schema.AccountBlockHeightKey: 1, schema.AccountAddressKey: 1}},
+			{Keys: bson.D{{schema.AccountBlockHeightKey, 1}}},
+			{Keys: bson.D{{schema.AccountBlockHeightKey, 1}, {schema.AccountAddressKey, 1}}},
 		}},
 		{s.PoolCollection(), []mongo.IndexModel{
-			{Keys: bson.M{schema.PoolBlockHeightKey: 1}},
-			{Keys: bson.M{schema.PoolBlockHeightKey: 1, schema.PoolIDKey: 1}},
+			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}}},
+			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}, {schema.PoolIDKey, 1}}},
 		}},
 	} {
 		names, err := x.coll.Indexes().CreateMany(ctx, x.is)
