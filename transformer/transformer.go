@@ -179,12 +179,16 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight int
 	dateKey := now.Format("2006-01-02")
 	newDeposits := make(map[string][]schema.DepositAction)
 	newSwaps := make(map[string][]schema.SwapAction)
+	ignoredAddresses := t.cfg.IgnoredAddressesSet()
 	for _, evt := range data.Events {
 		switch evt.Type {
 		case liquiditytypes.EventTypeDepositToPool:
 			addr, ok := eventAttributeValue(evt, liquiditytypes.AttributeValueDepositor)
 			if !ok {
 				return fmt.Errorf("attr %q not found", liquiditytypes.AttributeValueDepositor)
+			}
+			if _, ok := ignoredAddresses[addr]; ok {
+				continue
 			}
 			v, ok := eventAttributeValue(evt, liquiditytypes.AttributeValuePoolId)
 			if !ok {
@@ -203,6 +207,9 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight int
 			if !ok {
 				return fmt.Errorf("attr %q not found", liquiditytypes.AttributeValueSwapRequester)
 			}
+			if _, ok := ignoredAddresses[addr]; ok {
+				continue
+			}
 			v, ok := eventAttributeValue(evt, liquiditytypes.AttributeValuePoolId)
 			if !ok {
 				return fmt.Errorf("attr %q not found", liquiditytypes.AttributeValuePoolId)
@@ -219,6 +226,9 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight int
 	}
 	var writes []mongo.WriteModel
 	for _, b := range data.BankModuleState.Balances {
+		if _, ok := ignoredAddresses[b.Address]; ok {
+			continue
+		}
 		coins := []schema.Coin{}
 		for _, c := range b.Coins {
 			coins = append(coins, schema.Coin{Denom: c.Denom, Amount: c.Amount.Int64()})
