@@ -275,12 +275,14 @@ func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight int64,
 	for _, p := range data.Pools {
 		var reserveCoins []schema.Coin
 		for _, d := range p.ReserveCoinDenoms {
+			var amount int64
 			for _, c := range balances[p.ReserveAccountAddress] {
 				if c.Denom == d {
-					reserveCoins = append(reserveCoins, c)
+					amount = c.Amount
 					break
 				}
 			}
+			reserveCoins = append(reserveCoins, schema.Coin{Denom: d, Amount: amount})
 		}
 		sort.Slice(reserveCoins, func(i, j int) bool { return reserveCoins[i].Denom < reserveCoins[j].Denom })
 		poolCoin := schema.Coin{
