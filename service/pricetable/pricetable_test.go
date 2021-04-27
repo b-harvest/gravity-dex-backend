@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/b-harvest/gravity-dex-backend/config"
@@ -13,8 +14,10 @@ import (
 
 func TestContext_Price(t *testing.T) {
 	ctx := &Context{
-		stableCoinDenoms:  []string{"uusd"},
-		stakingCoinDenoms: []string{"atom", "luna"},
+		coinDenoms: []string{"atom", "luna", "usd"},
+		manualPrices: map[string]config.ManualPrice{
+			"usd": {MinPrice: 1.0, MaxPrice: 1.0},
+		},
 		denomMetadata: map[string]config.DenomMetadata{
 			"uusd":  {Display: "usd", Exponent: 6},
 			"uatom": {Display: "atom", Exponent: 6},
@@ -61,14 +64,14 @@ func TestContext_Price(t *testing.T) {
 	}{
 		{"uatom", 0.00002},
 		{"uluna", 0.00001},
-		{"pool1", 20.0},
-		{"pool2", 10.0},
+		{"pool1", 0.00004},
+		{"pool2", 0.00002},
 		{"pool3", 0.00004},
-		{"pool4", 2.0},
+		{"pool4", 0.00004},
 	} {
 		p, err := ctx.Price(tc.denom)
 		require.NoError(t, err)
-		require.Truef(t, approxEqual(p, tc.price), "%f != %f, tc #%d", p, tc.price, i)
+		assert.Truef(t, approxEqual(p, tc.price), "%f != %f, tc #%d", p, tc.price, i+1)
 	}
 }
 

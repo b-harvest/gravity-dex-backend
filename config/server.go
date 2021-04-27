@@ -10,6 +10,37 @@ import (
 var DefaultServerConfig = ServerConfig{
 	Debug:    false,
 	BindAddr: "0.0.0.0:8080",
+	CoinDenoms: []string{
+		"atom",
+		"xrn",
+		"btsg",
+		"dvpn",
+		"xprt",
+		"akt",
+		"luna",
+		"ngm",
+		"gcyb",
+		"iris",
+		"run",
+	},
+	ManualPrices: []ManualPrice{
+		{Denom: "run", MinPrice: 1.0, MaxPrice: 1.0},
+		{Denom: "xrn", MinPrice: 1.0, MaxPrice: 2.0},
+		{Denom: "gcyb", MinPrice: 1.0, MaxPrice: 2.0},
+	},
+	DenomMetadata: []DenomMetadata{
+		{Denom: "uatom", Display: "atom", Exponent: 6},
+		{Denom: "uxrn", Display: "xrn", Exponent: 6},
+		{Denom: "ubtsg", Display: "btsg", Exponent: 6},
+		{Denom: "udvpn", Display: "dvpn", Exponent: 6},
+		{Denom: "uxprt", Display: "xprt", Exponent: 6},
+		{Denom: "uakt", Display: "akt", Exponent: 6},
+		{Denom: "uluna", Display: "luna", Exponent: 6},
+		{Denom: "ungm", Display: "ngm", Exponent: 6},
+		{Denom: "ugcyb", Display: "gcyb", Exponent: 6},
+		{Denom: "uiris", Display: "iris", Exponent: 6},
+		{Denom: "xrun", Display: "run", Exponent: 6},
+	},
 	TradingDates: []string{
 		"2021-05-04",
 		"2021-05-05",
@@ -31,30 +62,27 @@ var DefaultServerConfig = ServerConfig{
 }
 
 type ServerConfig struct {
-	Debug                bool                     `yaml:"debug"`
-	BindAddr             string                   `yaml:"bind_addr"`
-	StableCoinDenoms     []string                 `yaml:"stable_coin_denoms"`
-	StakingCoinDenoms    []string                 `yaml:"staking_coin_denoms"`
-	DenomMetadata        map[string]DenomMetadata `yaml:"denom_metadata"`
-	CoinMarketCapAPIKey  string                   `yaml:"cmc_api_key"`
-	TradingDates         []string                 `yaml:"trading_dates"`
-	MaxActionScorePerDay int                      `yaml:"max_trading_score_per_day"`
-	InitialBalancesValue float64                  `yaml:"initial_balances_value"`
-	TradingScoreRatio    float64                  `yaml:"trading_score_ratio"`
-	ScoreBoardSize       int                      `yaml:"score_board_size"`
-	CacheLoadTimeout     time.Duration            `yaml:"cache_load_timeout"`
-	CacheUpdateInterval  time.Duration            `yaml:"cache_update_interval"`
-	MongoDB              MongoDBConfig            `yaml:"mongodb"`
-	Redis                RedisConfig              `yaml:"redis"`
-	Log                  zap.Config               `yaml:"log"`
+	Debug                bool            `yaml:"debug"`
+	BindAddr             string          `yaml:"bind_addr"`
+	CoinDenoms           []string        `yaml:"coin_denoms"`
+	ManualPrices         []ManualPrice   `yaml:"manual_prices"`
+	DenomMetadata        []DenomMetadata `yaml:"denom_metadata"`
+	CoinMarketCapAPIKey  string          `yaml:"cmc_api_key"`
+	TradingDates         []string        `yaml:"trading_dates"`
+	MaxActionScorePerDay int             `yaml:"max_trading_score_per_day"`
+	InitialBalancesValue float64         `yaml:"initial_balances_value"`
+	TradingScoreRatio    float64         `yaml:"trading_score_ratio"`
+	ScoreBoardSize       int             `yaml:"score_board_size"`
+	CacheLoadTimeout     time.Duration   `yaml:"cache_load_timeout"`
+	CacheUpdateInterval  time.Duration   `yaml:"cache_update_interval"`
+	MongoDB              MongoDBConfig   `yaml:"mongodb"`
+	Redis                RedisConfig     `yaml:"redis"`
+	Log                  zap.Config      `yaml:"log"`
 }
 
 func (cfg ServerConfig) Validate() error {
-	if len(cfg.StableCoinDenoms) == 0 {
-		return fmt.Errorf("'stable_coin_denoms' is empty")
-	}
-	if len(cfg.StakingCoinDenoms) == 0 {
-		return fmt.Errorf("'staking_coin_denoms' is empty")
+	if len(cfg.CoinDenoms) == 0 {
+		return fmt.Errorf("'coin_denoms' is empty")
 	}
 	if len(cfg.DenomMetadata) == 0 {
 		return fmt.Errorf("'denom_metadata' is empty")
@@ -74,15 +102,49 @@ func (cfg ServerConfig) Validate() error {
 	return nil
 }
 
-func (cfg ServerConfig) AvailableDenoms() []string {
-	denoms := append(cfg.StableCoinDenoms, cfg.StakingCoinDenoms...)
-	for denom := range cfg.DenomMetadata {
-		denoms = append(denoms, denom)
+func (cfg ServerConfig) QueryableDenoms() []string {
+	var denoms []string
+	mm := cfg.ManualPricesMap()
+	for _, d := range cfg.CoinDenoms {
+		if _, ok := mm[d]; !ok {
+			denoms = append(denoms, d)
+		}
 	}
 	return denoms
 }
 
+func (cfg ServerConfig) AvailableDenoms() []string {
+	denoms := cfg.CoinDenoms
+	for _, md := range cfg.DenomMetadata {
+		denoms = append(denoms, md.Denom)
+	}
+	return denoms
+}
+
+func (cfg ServerConfig) ManualPricesMap() map[string]ManualPrice {
+	m := make(map[string]ManualPrice)
+	for _, mp := range cfg.ManualPrices {
+		m[mp.Denom] = mp
+	}
+	return m
+}
+
+func (cfg ServerConfig) DenomMetadataMap() map[string]DenomMetadata {
+	m := make(map[string]DenomMetadata)
+	for _, md := range cfg.DenomMetadata {
+		m[md.Denom] = md
+	}
+	return m
+}
+
 type DenomMetadata struct {
+	Denom    string `yaml:"denom"`
 	Display  string `yaml:"display"`
 	Exponent int    `yaml:"exponent"`
+}
+
+type ManualPrice struct {
+	Denom    string  `yaml:"denom"`
+	MinPrice float64 `yaml:"min_price"`
+	MaxPrice float64 `yaml:"max_price"`
 }

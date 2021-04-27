@@ -4,13 +4,19 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
 	"github.com/b-harvest/gravity-dex-backend/service/price"
 	"github.com/b-harvest/gravity-dex-backend/util"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 type Service struct {
 	cfg config.ServerConfig
@@ -22,7 +28,7 @@ func NewService(cfg config.ServerConfig, ps price.Service) *Service {
 }
 
 func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (price.Table, error) {
-	t, err := s.ps.Prices(ctx, s.cfg.StakingCoinDenoms...)
+	t, err := s.ps.Prices(ctx, s.cfg.QueryableDenoms()...)
 	if err != nil {
 		return nil, fmt.Errorf("get prices: %w", err)
 	}
@@ -31,16 +37,13 @@ func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (price.Ta
 		poolByPoolCoinDenom[p.PoolCoin.Denom] = &p
 	}
 	c := &Context{
-		s.cfg.StableCoinDenoms,
-		s.cfg.StakingCoinDenoms,
-		s.cfg.DenomMetadata,
+		s.cfg.CoinDenoms,
+		s.cfg.ManualPricesMap(),
+		s.cfg.DenomMetadataMap(),
 		t,
 		poolByPoolCoinDenom,
 	}
-	denoms := append(s.cfg.StableCoinDenoms, s.cfg.StakingCoinDenoms...)
-	for denom := range s.cfg.DenomMetadata {
-		denoms = append(denoms, denom)
-	}
+	denoms := s.cfg.AvailableDenoms()
 	for denom := range poolByPoolCoinDenom {
 		denoms = append(denoms, denom)
 	}
@@ -56,19 +59,15 @@ func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (price.Ta
 }
 
 type Context struct {
-	stableCoinDenoms  []string
-	stakingCoinDenoms []string
-	denomMetadata     map[string]config.DenomMetadata
-	priceTable        price.Table
-	pools             map[string]*schema.Pool
+	coinDenoms    []string
+	manualPrices  map[string]config.ManualPrice
+	denomMetadata map[string]config.DenomMetadata
+	priceTable    price.Table
+	pools         map[string]*schema.Pool
 }
 
-func (c *Context) IsStableCoinDenom(denom string) bool {
-	return util.StringInSlice(denom, c.stableCoinDenoms)
-}
-
-func (c *Context) IsStakingCoinDenom(denom string) bool {
-	return util.StringInSlice(denom, c.stakingCoinDenoms)
+func (c *Context) IsNormalCoinDenom(denom string) bool {
+	return util.StringInSlice(denom, c.coinDenoms)
 }
 
 func (c *Context) IsPoolCoinDenom(denom string) bool {
@@ -83,10 +82,12 @@ func (c *Context) Price(denom string) (float64, error) {
 	p, ok := c.priceTable[denom]
 	if !ok {
 		switch {
-		case c.IsStableCoinDenom(denom):
-			p = 1
-		case c.IsStakingCoinDenom(denom):
-			return 0, fmt.Errorf("staking coin denom %q's price must be in price table", denom)
+		case c.IsNormalCoinDenom(denom):
+			mp, ok := c.manualPrices[denom]
+			if !ok {
+				return 0, fmt.Errorf("normal coin denom %q's price must be in price table", denom)
+			}
+			p = mp.MinPrice + rand.Float64()*(mp.MaxPrice-mp.MinPrice)
 		case c.IsPoolCoinDenom(denom):
 			pool := c.pools[denom]
 			sum := 0.0
