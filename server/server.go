@@ -46,7 +46,8 @@ func New(cfg config.ServerConfig, ss *store.Service, ps price.Service, pts *pric
 func (s *Server) registerRoutes() {
 	s.GET("/status", s.GetStatus)
 	s.GET("/scoreboard", s.GetScoreBoard)
-	s.GET("/prices", s.GetPrices)
+	s.GET("/pools", s.GetPools)
+	s.GET("/coins", s.GetCoins)
 }
 
 func (s *Server) GetStatus(c echo.Context) error {
@@ -130,15 +131,30 @@ func (s *Server) actionScore(acc schema.Account) (score float64, valid bool) {
 	return
 }
 
-func (s *Server) GetPrices(c echo.Context) error {
-	var resp schema.PricesResponse
+func (s *Server) GetPools(c echo.Context) error {
+	var resp schema.PoolsResponse
 	if err := RetryLoadingCache(c.Request().Context(), func(ctx context.Context) error {
 		var err error
-		resp, err = s.LoadPricesCache(ctx)
+		resp, err = s.LoadPoolsCache(ctx)
 		return err
 	}, s.cfg.CacheLoadTimeout); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "no prices data found")
+			return echo.NewHTTPError(http.StatusInternalServerError, "no pool data found")
+		}
+		return fmt.Errorf("load cache: %w", err)
+	}
+	return c.JSON(http.StatusOK, resp)
+}
+
+func (s *Server) GetCoins(c echo.Context) error {
+	var resp schema.CoinsResponse
+	if err := RetryLoadingCache(c.Request().Context(), func(ctx context.Context) error {
+		var err error
+		resp, err = s.LoadCoinsCache(ctx)
+		return err
+	}, s.cfg.CacheLoadTimeout); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return echo.NewHTTPError(http.StatusInternalServerError, "no coin data found")
 		}
 		return fmt.Errorf("load cache: %w", err)
 	}

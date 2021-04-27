@@ -46,8 +46,14 @@ func (s *Server) UpdateCaches(ctx context.Context) error {
 		return nil
 	})
 	eg.Go(func() error {
-		if err := s.UpdatePricesCache(ctx2, blockHeight, t); err != nil {
-			return fmt.Errorf("update price table cache: %w", err)
+		if err := s.UpdatePoolsCache(ctx2, blockHeight, pools, t); err != nil {
+			return fmt.Errorf("update pools cache: %w", err)
+		}
+		return nil
+	})
+	eg.Go(func() error {
+		if err := s.UpdateCoinsCache(ctx2, blockHeight, t); err != nil {
+			return fmt.Errorf("update coins cache: %w", err)
 		}
 		return nil
 	})
