@@ -47,7 +47,7 @@ func (s *Server) registerRoutes() {
 	s.GET("/status", s.GetStatus)
 	s.GET("/scoreboard", s.GetScoreBoard)
 	s.GET("/pools", s.GetPools)
-	s.GET("/coins", s.GetCoins)
+	s.GET("/prices", s.GetPrices)
 }
 
 func (s *Server) GetStatus(c echo.Context) error {
@@ -146,15 +146,15 @@ func (s *Server) GetPools(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-func (s *Server) GetCoins(c echo.Context) error {
-	var resp schema.CoinsResponse
+func (s *Server) GetPrices(c echo.Context) error {
+	var resp schema.PricesResponse
 	if err := RetryLoadingCache(c.Request().Context(), func(ctx context.Context) error {
 		var err error
-		resp, err = s.LoadCoinsCache(ctx)
+		resp, err = s.LoadPricesCache(ctx)
 		return err
 	}, s.cfg.CacheLoadTimeout); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "no coin data found")
+			return echo.NewHTTPError(http.StatusInternalServerError, "no price data found")
 		}
 		return fmt.Errorf("load cache: %w", err)
 	}

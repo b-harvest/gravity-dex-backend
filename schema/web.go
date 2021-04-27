@@ -44,13 +44,8 @@ type PoolsResponseReserveCoin struct {
 	GlobalPrice float64 `json:"globalPrice"`
 }
 
-type CoinsResponse struct {
-	BlockHeight int64               `json:"blockHeight"`
-	Coins       []CoinsResponseCoin `json:"coins"`
-	UpdatedAt   time.Time           `json:"updatedAt"`
-}
-
-type CoinsResponseCoin struct {
-	Denom       string  `json:"denom"`
-	GlobalPrice float64 `json:"globalPrice"`
+type PricesResponse struct {
+	BlockHeight int64              `json:"blockHeight"`
+	Prices      map[string]float64 `json:"prices"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
 }

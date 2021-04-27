@@ -33,7 +33,7 @@ $ gdex transformer
 ### Server
 
 Server is the API server.
-It generates score board and price table then caches those in background.
+It generates responses for each endpoints then caches those in background.
 Run it with:
 ```
 $ gdex server
@@ -71,7 +71,8 @@ If specified, `me` field is returned together in response.
       "totalScore": <float>,
       "tradingScore": <float>,
       "actionScore": <float>
-    }
+    },
+    ...
   ],
   "updatedAt": <string>
 }
@@ -81,6 +82,38 @@ If specified, `me` field is returned together in response.
 
 - `404 "account not found"`: Specified account address does not exist in score board.
 - `500 "no score board data found"`: There is no server cache of score board.
+
+### Pools
+
+#### Request
+
+`GET /pools`
+
+#### Response
+
+```
+{
+  "blockHeight": <int>,
+  "pools": [
+    {
+      "id": <uint>,
+      "reserveCoins": [
+        {
+	  "denom": <string>,
+	  "amount": <int>,
+	  "globalPrice": <float>
+	},
+        {
+	  "denom": <string>,
+	  "amount": <int>,
+	  "globalPrice": <float>
+	}
+      ]
+    },
+    ...
+  ]
+}
+```
 
 ### Price Table
 
@@ -93,11 +126,9 @@ If specified, `me` field is returned together in response.
 ```
 {
   "blockHeight": <int>,
-  "coins": [
-    {
-      "denom": <string>,
-      "globalPrice": <float>
-    }
+  "prices": {
+    <string>: <float>, // denom: globalPrice
+    ...
   ],
   "updatedAt": <string>
 }
@@ -105,4 +136,4 @@ If specified, `me` field is returned together in response.
 
 #### Errors
 
-- `500 "no prices data found"`: There is no server cache of prices.
+- `500 "no price data found"`: There is no server cache of prices.

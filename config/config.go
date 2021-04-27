@@ -50,14 +50,14 @@ var DefaultRedisConfig = RedisConfig{
 	URI:                "redis://localhost",
 	ScoreBoardCacheKey: "gdex:score_board",
 	PoolsCacheKey:      "gdex:pools",
-	CoinsCacheKey:      "gdex:coins",
+	PricesCacheKey:     "gdex:prices",
 }
 
 type RedisConfig struct {
 	URI                string `yaml:"uri"`
 	ScoreBoardCacheKey string `yaml:"score_board_cache_key"`
 	PoolsCacheKey      string `yaml:"pools_cache_key"`
-	CoinsCacheKey      string `yaml:"coins_cache_key"`
+	PricesCacheKey     string `yaml:"prices_cache_key"`
 }
 
 var DefaultCoinMarketCapConfig = CoinMarketCapConfig{
