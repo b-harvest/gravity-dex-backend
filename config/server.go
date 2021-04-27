@@ -41,6 +41,7 @@ var DefaultServerConfig = ServerConfig{
 		{Denom: "uiris", Display: "iris", Exponent: 6},
 		{Denom: "xrun", Display: "run", Exponent: 6},
 	},
+	CoinMarketCap: DefaultCoinMarketCapConfig,
 	TradingDates: []string{
 		"2021-05-04",
 		"2021-05-05",
@@ -62,22 +63,22 @@ var DefaultServerConfig = ServerConfig{
 }
 
 type ServerConfig struct {
-	Debug                bool            `yaml:"debug"`
-	BindAddr             string          `yaml:"bind_addr"`
-	CoinDenoms           []string        `yaml:"coin_denoms"`
-	ManualPrices         []ManualPrice   `yaml:"manual_prices"`
-	DenomMetadata        []DenomMetadata `yaml:"denom_metadata"`
-	CoinMarketCapAPIKey  string          `yaml:"cmc_api_key"`
-	TradingDates         []string        `yaml:"trading_dates"`
-	MaxActionScorePerDay int             `yaml:"max_trading_score_per_day"`
-	InitialBalancesValue float64         `yaml:"initial_balances_value"`
-	TradingScoreRatio    float64         `yaml:"trading_score_ratio"`
-	ScoreBoardSize       int             `yaml:"score_board_size"`
-	CacheLoadTimeout     time.Duration   `yaml:"cache_load_timeout"`
-	CacheUpdateInterval  time.Duration   `yaml:"cache_update_interval"`
-	MongoDB              MongoDBConfig   `yaml:"mongodb"`
-	Redis                RedisConfig     `yaml:"redis"`
-	Log                  zap.Config      `yaml:"log"`
+	Debug                bool                `yaml:"debug"`
+	BindAddr             string              `yaml:"bind_addr"`
+	CoinDenoms           []string            `yaml:"coin_denoms"`
+	ManualPrices         []ManualPrice       `yaml:"manual_prices"`
+	DenomMetadata        []DenomMetadata     `yaml:"denom_metadata"`
+	CoinMarketCap        CoinMarketCapConfig `yaml:"coinmarketcap"`
+	TradingDates         []string            `yaml:"trading_dates"`
+	MaxActionScorePerDay int                 `yaml:"max_trading_score_per_day"`
+	InitialBalancesValue float64             `yaml:"initial_balances_value"`
+	TradingScoreRatio    float64             `yaml:"trading_score_ratio"`
+	ScoreBoardSize       int                 `yaml:"score_board_size"`
+	CacheLoadTimeout     time.Duration       `yaml:"cache_load_timeout"`
+	CacheUpdateInterval  time.Duration       `yaml:"cache_update_interval"`
+	MongoDB              MongoDBConfig       `yaml:"mongodb"`
+	Redis                RedisConfig         `yaml:"redis"`
+	Log                  zap.Config          `yaml:"log"`
 }
 
 func (cfg ServerConfig) Validate() error {
@@ -87,8 +88,8 @@ func (cfg ServerConfig) Validate() error {
 	if len(cfg.DenomMetadata) == 0 {
 		return fmt.Errorf("'denom_metadata' is empty")
 	}
-	if cfg.CoinMarketCapAPIKey == "" {
-		return fmt.Errorf("'cmc_api_key' is required")
+	if cfg.CoinMarketCap.APIKey == "" {
+		return fmt.Errorf("'coinmarketcap.api_key' is required")
 	}
 	if len(cfg.TradingDates) == 0 {
 		return fmt.Errorf("'trading_dates' is empty")

@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -55,4 +56,13 @@ type RedisConfig struct {
 	URI                string `yaml:"uri"`
 	ScoreBoardCacheKey string `yaml:"score_board_cache_key"`
 	PriceTableCacheKey string `yaml:"price_table_cache_key"`
+}
+
+var DefaultCoinMarketCapConfig = CoinMarketCapConfig{
+	UpdateInterval: time.Minute,
+}
+
+type CoinMarketCapConfig struct {
+	APIKey         string        `yaml:"api_key"`
+	UpdateInterval time.Duration `yaml:"update_interval"`
 }

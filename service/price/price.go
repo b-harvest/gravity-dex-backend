@@ -25,27 +25,27 @@ type Service interface {
 }
 
 type CoinMarketCapService struct {
-	apiBaseURL *url.URL
-	hc         *http.Client
-	apiKey     string
+	apiBaseURL     *url.URL
+	hc             *http.Client
+	apiKey         string
+	caches         map[string]cache
+	updateInterval time.Duration
 }
 
-func NewCoinMarketCapService(apiKey string) (Service, error) {
+func NewCoinMarketCapService(apiKey string, updateInterval time.Duration) (Service, error) {
 	u, err := url.Parse(apiBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse api base url: %w", err)
 	}
 	hc := &http.Client{}
-	return &CoinMarketCapService{u, hc, apiKey}, nil
+	return &CoinMarketCapService{u, hc, apiKey, make(map[string]cache), updateInterval}, nil
 }
 
 func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) (Table, error) {
-	r, err := s.request(ctx, "/v1/cryptocurrency/quotes/latest", url.Values{
-		"symbol": {strings.Join(symbols, ",")},
-		"aux":    {""},
-	})
-	if err != nil {
-		return nil, err
+	symbolsToUpdate := s.symbolsToUpdate(symbols)
+	symbolSetToUpdate := make(map[string]struct{})
+	for _, symbol := range symbolsToUpdate {
+		symbolSetToUpdate[symbol] = struct{}{}
 	}
 	var data map[string]struct {
 		Quote struct {
@@ -54,16 +54,35 @@ func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) (T
 			} `json:"USD"`
 		} `json:"quote"`
 	}
-	if err := json.Unmarshal(r.Data, &data); err != nil {
-		return nil, fmt.Errorf("unmarshal data: %w", err)
+	if len(symbolsToUpdate) > 0 {
+		r, err := s.request(ctx, "/v1/cryptocurrency/quotes/latest", url.Values{
+			"symbol": {strings.Join(symbolsToUpdate, ",")},
+			"aux":    {""},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(r.Data, &data); err != nil {
+			return nil, fmt.Errorf("unmarshal data: %w", err)
+		}
 	}
+	now := time.Now()
 	t := make(Table)
 	for _, symbol := range symbols {
-		d, ok := data[strings.ToUpper(symbol)]
-		if !ok {
-			return nil, fmt.Errorf("price for symbol %q not found", symbol)
+		if _, ok := symbolSetToUpdate[symbol]; ok {
+			d, ok := data[strings.ToUpper(symbol)]
+			if !ok {
+				return nil, fmt.Errorf("price for symbol %q not found", symbol)
+			}
+			s.caches[strings.ToLower(symbol)] = cache{d.Quote.USD.Price, now}
+			t[strings.ToLower(symbol)] = d.Quote.USD.Price
+		} else {
+			c, ok := s.caches[strings.ToLower(symbol)]
+			if !ok { // will never happen!
+				return nil, fmt.Errorf("cache for symbol %q not found", symbol)
+			}
+			t[strings.ToLower(symbol)] = c.price
 		}
-		t[strings.ToLower(symbol)] = d.Quote.USD.Price
 	}
 	return t, nil
 }
@@ -94,6 +113,31 @@ func (s *CoinMarketCapService) request(ctx context.Context, path string, params 
 		return &r, &CoinMarketCapError{r.Status.ErrorCode, r.Status.ErrorMessage}
 	}
 	return &r, nil
+}
+
+func (s *CoinMarketCapService) clearCaches() {
+	now := time.Now()
+	for symbol, c := range s.caches {
+		if !c.updatedAt.Add(s.updateInterval).After(now) {
+			delete(s.caches, symbol)
+		}
+	}
+}
+
+func (s *CoinMarketCapService) symbolsToUpdate(symbols []string) []string {
+	s.clearCaches()
+	var res []string
+	for _, symbol := range symbols {
+		if _, ok := s.caches[strings.ToLower(symbol)]; !ok {
+			res = append(res, symbol)
+		}
+	}
+	return res
+}
+
+type cache struct {
+	price     float64
+	updatedAt time.Time
 }
 
 type CoinMarketCapResponse struct {

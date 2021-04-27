@@ -67,7 +67,7 @@ func ServerCmd() *cobra.Command {
 			conn.Close()
 
 			ss := store.NewService(cfg.Server.MongoDB, mc)
-			ps, err := price.NewCoinMarketCapService(cfg.Server.CoinMarketCapAPIKey)
+			ps, err := price.NewCoinMarketCapService(cfg.Server.CoinMarketCap.APIKey, cfg.Server.CoinMarketCap.UpdateInterval)
 			if err != nil {
 				return fmt.Errorf("new coinmarketcap service: %w", err)
 			}
