@@ -44,8 +44,19 @@ func New(cfg config.ServerConfig, ss *store.Service, ps price.Service, pts *pric
 }
 
 func (s *Server) registerRoutes() {
+	s.GET("/status", s.GetStatus)
 	s.GET("/scoreboard", s.GetScoreBoard)
 	s.GET("/pricetable", s.GetPriceTable)
+}
+
+func (s *Server) GetStatus(c echo.Context) error {
+	blockHeight, err := s.ss.LatestBlockHeight(c.Request().Context())
+	if err != nil {
+		return fmt.Errorf("get latest block height: %w", err)
+	}
+	return c.JSON(http.StatusOK, schema.StatusResponse{
+		LatestBlockHeight: blockHeight,
+	})
 }
 
 func (s *Server) GetScoreBoard(c echo.Context) error {

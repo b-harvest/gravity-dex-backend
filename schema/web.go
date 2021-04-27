@@ -2,6 +2,10 @@ package schema
 
 import "time"
 
+type StatusResponse struct {
+	LatestBlockHeight int64 `json:"latestBlockHeight"`
+}
+
 type ScoreBoardRequest struct {
 	Address string `query:"address"`
 }
