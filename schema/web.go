@@ -12,7 +12,7 @@ type ScoreBoardRequest struct {
 
 type ScoreBoardResponse struct {
 	BlockHeight int64               `json:"blockHeight"`
-	Me          *ScoreBoardAccount  `json:"me,omitempty"`
+	Me          *ScoreBoardAccount  `json:"me"`
 	Accounts    []ScoreBoardAccount `json:"accounts"`
 	UpdatedAt   time.Time           `json:"updatedAt"`
 }

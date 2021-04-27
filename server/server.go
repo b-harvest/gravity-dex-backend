@@ -76,18 +76,13 @@ func (s *Server) GetScoreBoard(c echo.Context) error {
 		}
 		return fmt.Errorf("load cache: %w", err)
 	}
-	var me *schema.ScoreBoardAccount
 	if req.Address != "" {
 		for _, acc := range resp.Accounts {
 			if acc.Address == req.Address {
-				me = &acc
+				resp.Me = &acc
 				break
 			}
 		}
-		if me == nil {
-			return echo.NewHTTPError(http.StatusNotFound, "account not found")
-		}
-		resp.Me = me
 	}
 	resp.Accounts = resp.Accounts[:util.MinInt(s.cfg.ScoreBoardSize, len(resp.Accounts))]
 	return c.JSON(http.StatusOK, resp)
