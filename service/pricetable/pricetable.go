@@ -34,6 +34,7 @@ func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (price.Ta
 	}
 	poolByPoolCoinDenom := make(map[string]*schema.Pool)
 	for _, p := range pools {
+		p := p
 		poolByPoolCoinDenom[p.PoolCoin.Denom] = &p
 	}
 	c := &Context{
