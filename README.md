@@ -55,7 +55,7 @@ If specified, `me` field is returned together in response.
 ```
 {
   "blockHeight" <int>,
-  "me": { // optional
+  "me": { // optional, can be null.
     "ranking": <int>,
     "username": <string>,
     "address": <string>,
@@ -78,9 +78,41 @@ If specified, `me` field is returned together in response.
 }
 ```
 
+If there is no account with matching address, then `me` field will contain `null`.
+
 #### Errors
 
-- `404 "account not found"`: Specified account address does not exist in score board.
+- `500 "no score board data found"`: There is no server cache of score board.
+
+### Score Board - Search
+
+#### Request
+
+`GET /scoreboard/search?q=<string>`
+
+`q` can be either a username or an address to search.
+
+#### Response
+
+```
+{
+  "blockHeight": <int>,
+  "account": { // optional, can be null.
+    "ranking": <int>
+    "username": <string>,
+    "address": <string>,
+    "totalScore": <float>,
+    "tradingScore": <float>,
+    "actionScore": <float>
+  },
+  "updatedAt": <string>
+}
+```
+
+If there is no account with matching address or username, then `account` field will contain `null`.
+
+#### Errors
+
 - `500 "no score board data found"`: There is no server cache of score board.
 
 ### Pools
