@@ -27,6 +27,16 @@ type ScoreBoardAccount struct {
 	IsValid      bool    `json:"isValid"`
 }
 
+type SearchAccountRequest struct {
+	Query string `query:"q"`
+}
+
+type SearchAccountResponse struct {
+	BlockHeight int64 `json:"blockHeight"`
+	Account     *ScoreBoardAccount
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
 type PoolsResponse struct {
 	BlockHeight int64               `json:"blockHeight"`
 	Pools       []PoolsResponsePool `json:"pools"`
