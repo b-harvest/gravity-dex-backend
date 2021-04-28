@@ -91,6 +91,10 @@ func (c *Context) Price(denom string) (float64, error) {
 			p = mp.MinPrice + rand.Float64()*(mp.MaxPrice-mp.MinPrice)
 		case c.IsPoolCoinDenom(denom):
 			pool := c.pools[denom]
+			if pool.PoolCoin.Amount == 0 { // pool is inactive
+				p = 0
+				break
+			}
 			sum := 0.0
 			for _, rc := range pool.ReserveCoins {
 				tp, err := c.Price(rc.Denom)

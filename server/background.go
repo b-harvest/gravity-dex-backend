@@ -53,7 +53,7 @@ func (s *Server) UpdateCaches(ctx context.Context) error {
 	})
 	eg.Go(func() error {
 		if err := s.UpdatePricesCache(ctx2, blockHeight, t); err != nil {
-			return fmt.Errorf("update coins cache: %w", err)
+			return fmt.Errorf("update prices cache: %w", err)
 		}
 		return nil
 	})
