@@ -26,7 +26,6 @@ var DefaultServerConfig = ServerConfig{
 	ManualPrices: []ManualPrice{
 		{Denom: "run", MinPrice: 1.0, MaxPrice: 1.0},
 		{Denom: "xrn", MinPrice: 1.0, MaxPrice: 2.0},
-		{Denom: "gcyb", MinPrice: 1.0, MaxPrice: 2.0},
 	},
 	DenomMetadata: []DenomMetadata{
 		{Denom: "uatom", Display: "atom", Exponent: 6},
@@ -69,6 +68,7 @@ type ServerConfig struct {
 	ManualPrices         []ManualPrice       `yaml:"manual_prices"`
 	DenomMetadata        []DenomMetadata     `yaml:"denom_metadata"`
 	CoinMarketCap        CoinMarketCapConfig `yaml:"coinmarketcap"`
+	CyberNode            CyberNodeConfig     `yaml:"cybernode"`
 	TradingDates         []string            `yaml:"trading_dates"`
 	MaxActionScorePerDay int                 `yaml:"max_trading_score_per_day"`
 	InitialBalancesValue float64             `yaml:"initial_balances_value"`
@@ -148,4 +148,21 @@ type ManualPrice struct {
 	Denom    string  `yaml:"denom"`
 	MinPrice float64 `yaml:"min_price"`
 	MaxPrice float64 `yaml:"max_price"`
+}
+
+var DefaultCoinMarketCapConfig = CoinMarketCapConfig{
+	UpdateInterval: time.Minute,
+}
+
+type CoinMarketCapConfig struct {
+	APIKey         string        `yaml:"api_key"`
+	UpdateInterval time.Duration `yaml:"update_interval"`
+}
+
+var DefaultCyberNodeConfig = CyberNodeConfig{
+	UpdateInterval: time.Minute,
+}
+
+type CyberNodeConfig struct {
+	UpdateInterval time.Duration `yaml:"update_interval"`
 }
