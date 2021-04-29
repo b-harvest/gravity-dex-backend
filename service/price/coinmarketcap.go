@@ -30,8 +30,7 @@ func NewCoinMarketCapService(apiKey string, updateInterval time.Duration) (Servi
 	if err != nil {
 		return nil, fmt.Errorf("parse api base url: %w", err)
 	}
-	hc := &http.Client{}
-	return &CoinMarketCapService{u, hc, apiKey, NewCacheStorage(updateInterval)}, nil
+	return &CoinMarketCapService{u, &http.Client{}, apiKey, NewCacheStorage(updateInterval)}, nil
 }
 
 func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) (Table, error) {
