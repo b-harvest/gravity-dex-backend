@@ -19,11 +19,10 @@ const (
 var _ Service = (*CoinMarketCapService)(nil)
 
 type CoinMarketCapService struct {
-	baseURL        *url.URL
-	hc             *http.Client
-	apiKey         string
-	caches         map[string]cache
-	updateInterval time.Duration
+	baseURL *url.URL
+	hc      *http.Client
+	apiKey  string
+	cs      *CacheStorage
 }
 
 func NewCoinMarketCapService(apiKey string, updateInterval time.Duration) (Service, error) {
@@ -32,11 +31,11 @@ func NewCoinMarketCapService(apiKey string, updateInterval time.Duration) (Servi
 		return nil, fmt.Errorf("parse api base url: %w", err)
 	}
 	hc := &http.Client{}
-	return &CoinMarketCapService{u, hc, apiKey, make(map[string]cache), updateInterval}, nil
+	return &CoinMarketCapService{u, hc, apiKey, NewCacheStorage(updateInterval)}, nil
 }
 
 func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) (Table, error) {
-	symbolsToUpdate := s.symbolsToUpdate(symbols)
+	symbolsToUpdate := s.cs.NewSymbols(symbols...)
 	symbolSetToUpdate := make(map[string]struct{})
 	for _, symbol := range symbolsToUpdate {
 		symbolSetToUpdate[symbol] = struct{}{}
@@ -60,7 +59,6 @@ func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) (T
 			return nil, fmt.Errorf("unmarshal data: %w", err)
 		}
 	}
-	now := time.Now()
 	t := make(Table)
 	for _, symbol := range symbols {
 		if _, ok := symbolSetToUpdate[symbol]; ok {
@@ -68,14 +66,14 @@ func (s *CoinMarketCapService) Prices(ctx context.Context, symbols ...string) (T
 			if !ok {
 				return nil, fmt.Errorf("price for symbol %q not found", symbol)
 			}
-			s.caches[strings.ToLower(symbol)] = cache{d.Quote.USD.Price, now}
+			s.cs.SetPrice(symbol, d.Quote.USD.Price)
 			t[strings.ToLower(symbol)] = d.Quote.USD.Price
 		} else {
-			c, ok := s.caches[strings.ToLower(symbol)]
+			p, ok := s.cs.Price(symbol)
 			if !ok { // will never happen!
 				return nil, fmt.Errorf("cache for symbol %q not found", symbol)
 			}
-			t[strings.ToLower(symbol)] = c.price
+			t[strings.ToLower(symbol)] = p
 		}
 	}
 	return t, nil
@@ -107,26 +105,6 @@ func (s *CoinMarketCapService) request(ctx context.Context, path string, params 
 		return &r, &CoinMarketCapError{r.Status.ErrorCode, r.Status.ErrorMessage}
 	}
 	return &r, nil
-}
-
-func (s *CoinMarketCapService) clearCaches() {
-	now := time.Now()
-	for symbol, c := range s.caches {
-		if !c.updatedAt.Add(s.updateInterval).After(now) {
-			delete(s.caches, symbol)
-		}
-	}
-}
-
-func (s *CoinMarketCapService) symbolsToUpdate(symbols []string) []string {
-	s.clearCaches()
-	var res []string
-	for _, symbol := range symbols {
-		if _, ok := s.caches[strings.ToLower(symbol)]; !ok {
-			res = append(res, symbol)
-		}
-	}
-	return res
 }
 
 type CoinMarketCapResponse struct {
