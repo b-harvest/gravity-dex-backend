@@ -10,7 +10,7 @@ import (
 var DefaultTransformerConfig = TransformerConfig{
 	BlockDataFilename:        "%08d/%d.json",
 	BlockDataBucketSize:      10000,
-	BlockDataWaitingInterval: 500 * time.Millisecond,
+	BlockDataWaitingInterval: time.Second,
 	PruningOffset:            -2,
 	MongoDB:                  DefaultMongoDBConfig,
 	Log:                      zap.NewProductionConfig(),
