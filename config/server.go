@@ -41,6 +41,7 @@ var DefaultServerConfig = ServerConfig{
 		{Denom: "xrun", Display: "run", Exponent: 6},
 	},
 	CoinMarketCap: DefaultCoinMarketCapConfig,
+	CyberNode:     DefaultCyberNodeConfig,
 	TradingDates: []string{
 		"2021-05-04",
 		"2021-05-05",
