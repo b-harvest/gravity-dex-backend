@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.uber.org/zap"
@@ -19,7 +20,9 @@ func (s *Server) RunBackgroundUpdater(ctx context.Context) error {
 		case <-ticker.C:
 			s.logger.Debug("updating caches")
 			if err := s.UpdateCaches(ctx); err != nil {
-				s.logger.Error("failed to update caches", zap.Error(err))
+				if !errors.Is(err, context.Canceled) {
+					s.logger.Error("failed to update caches", zap.Error(err))
+				}
 			}
 		}
 	}
