@@ -10,6 +10,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/liquidity v1.2.4
+	github.com/tendermint/tendermint v0.34.9
 	go.mongodb.org/mongo-driver v1.5.1
 	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9

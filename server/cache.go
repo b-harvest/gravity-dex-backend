@@ -70,9 +70,16 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 				GlobalPrice: priceTable[rc.Denom],
 			})
 		}
+		c := p.SwapFeeVolumes.TotalCoins()
+		feeValue := 0.0
+		for denom, amount := range c {
+			feeValue += float64(amount) * priceTable[denom]
+		}
+		poolValue := priceTable[p.PoolCoin.Denom] * float64(p.PoolCoin.Amount)
 		resp.Pools = append(resp.Pools, schema.PoolsResponsePool{
 			ID:           p.ID,
 			ReserveCoins: reserveCoins,
+			APY:          feeValue / poolValue * 24 * 365,
 		})
 	}
 	resp.UpdatedAt = time.Now()

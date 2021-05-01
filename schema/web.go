@@ -46,6 +46,7 @@ type PoolsResponse struct {
 type PoolsResponsePool struct {
 	ID           uint64                     `json:"id"`
 	ReserveCoins []PoolsResponseReserveCoin `json:"reserveCoins"`
+	APY          float64                    `json:"apy"`
 }
 
 type PoolsResponseReserveCoin struct {

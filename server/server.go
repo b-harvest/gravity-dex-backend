@@ -179,20 +179,12 @@ func (s *Server) tradingScore(acc schema.Account, priceTable price.Table) (float
 }
 
 func (s *Server) actionScore(acc schema.Account) (score float64, valid bool) {
-	ds := make(map[uint64]struct{}) // pool id set which user deposited
-	ss := make(map[uint64]struct{}) // pool id set which user swapped
 	for _, k := range s.cfg.TradingDates {
-		for _, da := range acc.Actions[k].Deposits {
-			ds[da.PoolID] = struct{}{}
-		}
-		for _, sa := range acc.Actions[k].Swaps {
-			ss[sa.PoolID] = struct{}{}
-		}
-		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, len(acc.Actions[k].Deposits)))
-		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, len(acc.Actions[k].Swaps)))
+		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, acc.DepositStatus.CountByDate[k]))
+		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, acc.SwapStatus.CountByDate[k]))
 	}
 	score /= float64((2 * s.cfg.MaxActionScorePerDay) * len(s.cfg.TradingDates))
 	score *= 100
-	valid = len(ds) >= 3 && len(ss) >= 3
+	valid = len(acc.DepositStatus.CountByPoolID) >= 3 && len(acc.SwapStatus.CountByPoolID) >= 3
 	return
 }
