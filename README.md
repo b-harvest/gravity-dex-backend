@@ -140,7 +140,8 @@ If there is no account with matching address or username, then `account` field w
 	  "amount": <int>,
 	  "globalPrice": <float>
 	}
-      ]
+      ],
+      "apy": <float>
     },
     ...
   ],
