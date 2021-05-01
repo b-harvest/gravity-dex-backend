@@ -59,7 +59,7 @@ func (attrs EventAttributes) OfferCoinFee() (sdk.Coin, error) {
 	if err != nil {
 		return sdk.Coin{}, err
 	}
-	v, err := attrs.Attr(liquiditytypes.AttributeValueExchangedOfferCoinAmount)
+	v, err := attrs.Attr(liquiditytypes.AttributeValueOfferCoinFeeAmount)
 	if err != nil {
 		return sdk.Coin{}, err
 	}
