@@ -12,7 +12,7 @@ var DefaultServerConfig = ServerConfig{
 	BindAddr: "0.0.0.0:8080",
 	CoinDenoms: []string{
 		"atom",
-		"xrn",
+		"regen",
 		"btsg",
 		"dvpn",
 		"xprt",
@@ -25,11 +25,11 @@ var DefaultServerConfig = ServerConfig{
 	},
 	ManualPrices: []ManualPrice{
 		{Denom: "run", MinPrice: 1.0, MaxPrice: 1.0},
-		{Denom: "xrn", MinPrice: 1.0, MaxPrice: 2.0},
+		{Denom: "regen", MinPrice: 1.0, MaxPrice: 2.0},
 	},
 	DenomMetadata: []DenomMetadata{
 		{Denom: "uatom", Display: "atom", Exponent: 6},
-		{Denom: "uxrn", Display: "xrn", Exponent: 6},
+		{Denom: "uregen", Display: "regen", Exponent: 6},
 		{Denom: "ubtsg", Display: "btsg", Exponent: 6},
 		{Denom: "udvpn", Display: "dvpn", Exponent: 6},
 		{Denom: "uxprt", Display: "xprt", Exponent: 6},
