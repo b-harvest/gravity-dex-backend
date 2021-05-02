@@ -141,6 +141,11 @@ If there is no account with matching address or username, then `account` field w
 	  "globalPrice": <float>
 	}
       ],
+      "poolCoin": {
+        "demom": <string>,
+	"amount": <int>,
+	"globalPrice": <float>
+      },
       "apy": <float>
     },
     ...
