@@ -62,9 +62,9 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 		Pools:       []schema.PoolsResponsePool{},
 	}
 	for _, p := range pools {
-		var reserveCoins []schema.PoolsResponseReserveCoin
+		var reserveCoins []schema.PoolsResponseCoin
 		for _, rc := range p.ReserveCoins {
-			reserveCoins = append(reserveCoins, schema.PoolsResponseReserveCoin{
+			reserveCoins = append(reserveCoins, schema.PoolsResponseCoin{
 				Denom:       rc.Denom,
 				Amount:      rc.Amount,
 				GlobalPrice: priceTable[rc.Denom],
@@ -79,7 +79,12 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 		resp.Pools = append(resp.Pools, schema.PoolsResponsePool{
 			ID:           p.ID,
 			ReserveCoins: reserveCoins,
-			APY:          feeValue / poolValue * 24 * 365,
+			PoolCoin: schema.PoolsResponseCoin{
+				Denom:       p.PoolCoin.Denom,
+				Amount:      p.PoolCoin.Amount,
+				GlobalPrice: priceTable[p.PoolCoin.Denom],
+			},
+			APY: feeValue / poolValue * 24 * 365,
 		})
 	}
 	resp.UpdatedAt = time.Now()

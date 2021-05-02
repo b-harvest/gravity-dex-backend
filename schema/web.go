@@ -44,12 +44,13 @@ type PoolsResponse struct {
 }
 
 type PoolsResponsePool struct {
-	ID           uint64                     `json:"id"`
-	ReserveCoins []PoolsResponseReserveCoin `json:"reserveCoins"`
-	APY          float64                    `json:"apy"`
+	ID           uint64              `json:"id"`
+	ReserveCoins []PoolsResponseCoin `json:"reserveCoins"`
+	PoolCoin     PoolsResponseCoin   `json:"poolCoin"`
+	APY          float64             `json:"apy"`
 }
 
-type PoolsResponseReserveCoin struct {
+type PoolsResponseCoin struct {
 	Denom       string  `json:"denom"`
 	Amount      int64   `json:"amount"`
 	GlobalPrice float64 `json:"globalPrice"`
