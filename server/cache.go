@@ -56,7 +56,10 @@ func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, pri
 		if cache.Accounts[i].IsValid != cache.Accounts[j].IsValid {
 			return cache.Accounts[i].IsValid
 		}
-		return cache.Accounts[i].TotalScore > cache.Accounts[j].TotalScore
+		if cache.Accounts[i].TotalScore != cache.Accounts[j].TotalScore {
+			return cache.Accounts[i].TotalScore > cache.Accounts[j].TotalScore
+		}
+		return cache.Accounts[i].Address < cache.Accounts[j].Address
 	})
 	for i := range cache.Accounts {
 		cache.Accounts[i].Ranking = i + 1
