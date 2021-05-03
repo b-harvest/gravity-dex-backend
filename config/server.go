@@ -57,7 +57,7 @@ var DefaultServerConfig = ServerConfig{
 		"2021-05-10",
 	},
 	MaxActionScorePerDay: 3,
-	InitialBalancesValue: 30000,
+	InitialBalancesValue: 40000,
 	TradingScoreRatio:    0.9,
 	ScoreBoardSize:       100,
 	CacheLoadTimeout:     10 * time.Second,
