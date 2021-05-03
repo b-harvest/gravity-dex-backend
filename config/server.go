@@ -21,11 +21,12 @@ var DefaultServerConfig = ServerConfig{
 		"ngm",
 		"gcyb",
 		"iris",
+		"com",
+		"dsm",
 		"run",
 	},
 	ManualPrices: []ManualPrice{
 		{Denom: "run", MinPrice: 1.0, MaxPrice: 1.0},
-		{Denom: "regen", MinPrice: 1.0, MaxPrice: 2.0},
 	},
 	DenomMetadata: []DenomMetadata{
 		{Denom: "uatom", Display: "atom", Exponent: 6},
@@ -38,10 +39,14 @@ var DefaultServerConfig = ServerConfig{
 		{Denom: "ungm", Display: "ngm", Exponent: 6},
 		{Denom: "ugcyb", Display: "gcyb", Exponent: 6},
 		{Denom: "uiris", Display: "iris", Exponent: 6},
+		{Denom: "ucom", Display: "com", Exponent: 6},
+		{Denom: "udsm", Display: "dsm", Exponent: 6},
 		{Denom: "xrun", Display: "run", Exponent: 6},
 	},
 	CoinMarketCap: DefaultCoinMarketCapConfig,
 	CyberNode:     DefaultCyberNodeConfig,
+	Fixer:         DefaultFixerConfig,
+	RandomOracle:  DefaultRandomOracleConfig,
 	TradingDates: []string{
 		"2021-05-04",
 		"2021-05-05",
@@ -70,6 +75,8 @@ type ServerConfig struct {
 	DenomMetadata        []DenomMetadata     `yaml:"denom_metadata"`
 	CoinMarketCap        CoinMarketCapConfig `yaml:"coinmarketcap"`
 	CyberNode            CyberNodeConfig     `yaml:"cybernode"`
+	Fixer                FixerConfig         `yaml:"fixer"`
+	RandomOracle         RandomOracleConfig  `yaml:"random_oracle"`
 	TradingDates         []string            `yaml:"trading_dates"`
 	MaxActionScorePerDay int                 `yaml:"max_trading_score_per_day"`
 	InitialBalancesValue float64             `yaml:"initial_balances_value"`
@@ -91,6 +98,12 @@ func (cfg ServerConfig) Validate() error {
 	}
 	if cfg.CoinMarketCap.APIKey == "" {
 		return fmt.Errorf("'coinmarketcap.api_key' is required")
+	}
+	if cfg.Fixer.AccessKey == "" {
+		return fmt.Errorf("'fixer.access_key' is required")
+	}
+	if cfg.RandomOracle.URL == "" {
+		return fmt.Errorf("'random_oracle.url' is required")
 	}
 	if len(cfg.TradingDates) == 0 {
 		return fmt.Errorf("'trading_dates' is empty")
@@ -166,4 +179,17 @@ var DefaultCyberNodeConfig = CyberNodeConfig{
 
 type CyberNodeConfig struct {
 	UpdateInterval time.Duration `yaml:"update_interval"`
+}
+
+var DefaultFixerConfig = FixerConfig{}
+
+type FixerConfig struct {
+	AccessKey      string        `yaml:"access_key"`
+	UpdateInterval time.Duration `yaml:"update_interval"`
+}
+
+var DefaultRandomOracleConfig = RandomOracleConfig{}
+
+type RandomOracleConfig struct {
+	URL string `yaml:"url"`
 }

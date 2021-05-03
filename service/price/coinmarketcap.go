@@ -25,7 +25,7 @@ type CoinMarketCapService struct {
 	cs      *CacheStorage
 }
 
-func NewCoinMarketCapService(apiKey string, updateInterval time.Duration) (Service, error) {
+func NewCoinMarketCapService(apiKey string, updateInterval time.Duration) (*CoinMarketCapService, error) {
 	u, err := url.Parse(cmcAPIBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse api base url: %w", err)

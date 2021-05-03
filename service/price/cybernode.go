@@ -17,8 +17,12 @@ type CyberNodeService struct {
 	cs *CacheStorage
 }
 
-func NewCyberNodeService(updateInterval time.Duration) Service {
+func NewCyberNodeService(updateInterval time.Duration) *CyberNodeService {
 	return &CyberNodeService{&http.Client{}, NewCacheStorage(updateInterval)}
+}
+
+func (s *CyberNodeService) Symbols() []string {
+	return []string{"gcyb"}
 }
 
 func (s *CyberNodeService) Prices(ctx context.Context, symbols ...string) (Table, error) {
