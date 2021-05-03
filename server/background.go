@@ -43,7 +43,7 @@ func (s *Server) UpdateCaches(ctx context.Context) error {
 	}
 	eg, ctx2 := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		if err := s.UpdateScoreBoardCache(ctx2, blockHeight, t); err != nil {
+		if err := s.UpdateAccountsCache(ctx2, blockHeight, t); err != nil {
 			return fmt.Errorf("update score board cache: %w", err)
 		}
 		return nil

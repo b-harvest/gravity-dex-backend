@@ -17,10 +17,10 @@ import (
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-func (s *Server) UpdateScoreBoardCache(ctx context.Context, blockHeight int64, priceTable price.Table) error {
-	resp := schema.ScoreBoardResponse{
+func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, priceTable price.Table) error {
+	cache := schema.AccountsCache{
 		BlockHeight: blockHeight,
-		Accounts:    []schema.ScoreBoardAccount{},
+		Accounts:    []schema.AccountsCacheAccount{},
 	}
 	if err := s.ss.IterateAccounts(ctx, blockHeight, func(acc schema.Account) (stop bool, err error) {
 		ts, err := s.tradingScore(acc, priceTable)
@@ -28,58 +28,66 @@ func (s *Server) UpdateScoreBoardCache(ctx context.Context, blockHeight int64, p
 			return true, fmt.Errorf("calculate trading score for account %q: %w", acc.Address, err)
 		}
 		as, valid := s.actionScore(acc)
-		resp.Accounts = append(resp.Accounts, schema.ScoreBoardAccount{
-			Username:     acc.Username,
+		cache.Accounts = append(cache.Accounts, schema.AccountsCacheAccount{
 			Address:      acc.Address,
+			Username:     acc.Username,
 			TotalScore:   ts*s.cfg.TradingScoreRatio + as*(1-s.cfg.TradingScoreRatio),
 			TradingScore: ts,
 			ActionScore:  as,
 			IsValid:      valid,
+			DepositStatus: schema.AccountCacheActionStatus{
+				NumDifferentPools: len(acc.DepositStatus.CountByPoolID),
+				CountByDate:       acc.DepositStatus.CountByDate,
+			},
+			SwapStatus: schema.AccountCacheActionStatus{
+				NumDifferentPools: len(acc.SwapStatus.CountByPoolID),
+				CountByDate:       acc.SwapStatus.CountByDate,
+			},
 		})
 		return false, nil
 	}); err != nil {
 		return err
 	}
-	sort.SliceStable(resp.Accounts, func(i, j int) bool {
-		if resp.Accounts[i].IsValid != resp.Accounts[j].IsValid {
-			return resp.Accounts[i].IsValid
+	sort.SliceStable(cache.Accounts, func(i, j int) bool {
+		if cache.Accounts[i].IsValid != cache.Accounts[j].IsValid {
+			return cache.Accounts[i].IsValid
 		}
-		return resp.Accounts[i].TotalScore > resp.Accounts[j].TotalScore
+		return cache.Accounts[i].TotalScore > cache.Accounts[j].TotalScore
 	})
-	for i := range resp.Accounts {
-		resp.Accounts[i].Ranking = i + 1
+	for i := range cache.Accounts {
+		cache.Accounts[i].Ranking = i + 1
 	}
-	resp.UpdatedAt = time.Now()
-	if err := s.SaveScoreBoardCache(ctx, resp); err != nil {
+	cache.UpdatedAt = time.Now()
+	if err := s.SaveAccountsCache(ctx, cache); err != nil {
 		return fmt.Errorf("save cache: %w", err)
 	}
 	return nil
 }
 
 func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools []schema.Pool, priceTable price.Table) error {
-	resp := schema.PoolsResponse{
+	cache := schema.PoolsCache{
 		BlockHeight: blockHeight,
-		Pools:       []schema.PoolsResponsePool{},
+		Pools:       []schema.PoolsCachePool{},
 	}
 	for _, p := range pools {
-		var reserveCoins []schema.PoolsResponseCoin
+		var reserveCoins []schema.PoolsCacheCoin
 		for _, rc := range p.ReserveCoins {
-			reserveCoins = append(reserveCoins, schema.PoolsResponseCoin{
+			reserveCoins = append(reserveCoins, schema.PoolsCacheCoin{
 				Denom:       rc.Denom,
 				Amount:      rc.Amount,
 				GlobalPrice: priceTable[rc.Denom],
 			})
 		}
-		c := p.SwapFeeVolumes.TotalCoins()
+		cs := p.SwapFeeVolumes.TotalCoins()
 		feeValue := 0.0
-		for denom, amount := range c {
+		for denom, amount := range cs {
 			feeValue += float64(amount) * priceTable[denom]
 		}
 		poolValue := priceTable[p.PoolCoin.Denom] * float64(p.PoolCoin.Amount)
-		resp.Pools = append(resp.Pools, schema.PoolsResponsePool{
+		cache.Pools = append(cache.Pools, schema.PoolsCachePool{
 			ID:           p.ID,
 			ReserveCoins: reserveCoins,
-			PoolCoin: schema.PoolsResponseCoin{
+			PoolCoin: schema.PoolsCacheCoin{
 				Denom:       p.PoolCoin.Denom,
 				Amount:      p.PoolCoin.Amount,
 				GlobalPrice: priceTable[p.PoolCoin.Denom],
@@ -87,20 +95,20 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 			APY: feeValue / poolValue * 24 * 365,
 		})
 	}
-	resp.UpdatedAt = time.Now()
-	if err := s.SavePoolsCache(ctx, resp); err != nil {
+	cache.UpdatedAt = time.Now()
+	if err := s.SavePoolsCache(ctx, cache); err != nil {
 		return fmt.Errorf("save cache: %w", err)
 	}
 	return nil
 }
 
 func (s *Server) UpdatePricesCache(ctx context.Context, blockHeight int64, priceTable price.Table) error {
-	resp := schema.PricesResponse{
+	cache := schema.PricesCache{
 		BlockHeight: blockHeight,
 		Prices:      priceTable,
 		UpdatedAt:   time.Now(),
 	}
-	if err := s.SavePricesCache(ctx, resp); err != nil {
+	if err := s.SavePricesCache(ctx, cache); err != nil {
 		return fmt.Errorf("save cache: %w", err)
 	}
 	return nil
@@ -129,50 +137,50 @@ func (s *Server) LoadCache(ctx context.Context, key string) ([]byte, error) {
 	return redis.Bytes(c.Do("GET", key))
 }
 
-func (s *Server) SaveScoreBoardCache(ctx context.Context, resp schema.ScoreBoardResponse) error {
-	return s.SaveCache(ctx, s.cfg.Redis.ScoreBoardCacheKey, resp)
+func (s *Server) SaveAccountsCache(ctx context.Context, cache schema.AccountsCache) error {
+	return s.SaveCache(ctx, s.cfg.Redis.AccountsCacheKey, cache)
 }
 
-func (s *Server) SavePoolsCache(ctx context.Context, resp schema.PoolsResponse) error {
-	return s.SaveCache(ctx, s.cfg.Redis.PoolsCacheKey, resp)
+func (s *Server) SavePoolsCache(ctx context.Context, cache schema.PoolsCache) error {
+	return s.SaveCache(ctx, s.cfg.Redis.PoolsCacheKey, cache)
 }
 
-func (s *Server) SavePricesCache(ctx context.Context, resp schema.PricesResponse) error {
-	return s.SaveCache(ctx, s.cfg.Redis.PricesCacheKey, resp)
+func (s *Server) SavePricesCache(ctx context.Context, cache schema.PricesCache) error {
+	return s.SaveCache(ctx, s.cfg.Redis.PricesCacheKey, cache)
 }
 
-func (s *Server) LoadScoreBoardCache(ctx context.Context) (resp schema.ScoreBoardResponse, err error) {
-	b, err := s.LoadCache(ctx, s.cfg.Redis.ScoreBoardCacheKey)
+func (s *Server) LoadAccountsCache(ctx context.Context) (cache schema.AccountsCache, err error) {
+	b, err := s.LoadCache(ctx, s.cfg.Redis.AccountsCacheKey)
 	if err != nil {
-		return resp, err
+		return cache, err
 	}
-	err = json.Unmarshal(b, &resp)
+	err = json.Unmarshal(b, &cache)
 	if err != nil {
-		return resp, fmt.Errorf("unmarshal response: %w", err)
+		return cache, fmt.Errorf("unmarshal response: %w", err)
 	}
 	return
 }
 
-func (s *Server) LoadPoolsCache(ctx context.Context) (resp schema.PoolsResponse, err error) {
+func (s *Server) LoadPoolsCache(ctx context.Context) (cache schema.PoolsCache, err error) {
 	b, err := s.LoadCache(ctx, s.cfg.Redis.PoolsCacheKey)
 	if err != nil {
-		return resp, err
+		return cache, err
 	}
-	err = json.Unmarshal(b, &resp)
+	err = json.Unmarshal(b, &cache)
 	if err != nil {
-		return resp, fmt.Errorf("unmarshal response: %w", err)
+		return cache, fmt.Errorf("unmarshal response: %w", err)
 	}
 	return
 }
 
-func (s *Server) LoadPricesCache(ctx context.Context) (resp schema.PricesResponse, err error) {
+func (s *Server) LoadPricesCache(ctx context.Context) (cache schema.PricesCache, err error) {
 	b, err := s.LoadCache(ctx, s.cfg.Redis.PricesCacheKey)
 	if err != nil {
-		return resp, err
+		return cache, err
 	}
-	err = json.Unmarshal(b, &resp)
+	err = json.Unmarshal(b, &cache)
 	if err != nil {
-		return resp, fmt.Errorf("unmarshal response: %w", err)
+		return cache, fmt.Errorf("unmarshal response: %w", err)
 	}
 	return
 }

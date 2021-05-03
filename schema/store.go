@@ -22,12 +22,12 @@ const (
 )
 
 type Account struct {
-	BlockHeight   int64        `bson:"blockHeight"`
-	Username      string       `bson:"username"`
-	Address       string       `bson:"address"`
-	Coins         []Coin       `bson:"coins"`
-	DepositStatus ActionStatus `bson:"depositStatus"`
-	SwapStatus    ActionStatus `bson:"swapStatus"`
+	BlockHeight   int64               `bson:"blockHeight"`
+	Username      string              `bson:"username"`
+	Address       string              `bson:"address"`
+	Coins         []Coin              `bson:"coins"`
+	DepositStatus AccountActionStatus `bson:"depositStatus"`
+	SwapStatus    AccountActionStatus `bson:"swapStatus"`
 }
 
 type Coin struct {
@@ -35,20 +35,20 @@ type Coin struct {
 	Amount int64  `bson:"amount"`
 }
 
-type ActionStatus struct {
+type AccountActionStatus struct {
 	CountByPoolID map[uint64]int `bson:"countByPoolID"`
 	CountByDate   map[string]int `bson:"countByDate"`
 }
 
-func NewActionStatus() ActionStatus {
-	return ActionStatus{
+func NewAccountActionStatus() AccountActionStatus {
+	return AccountActionStatus{
 		CountByPoolID: make(map[uint64]int),
 		CountByDate:   make(map[string]int),
 	}
 }
 
-func MergeActionStatus(ss ...ActionStatus) ActionStatus {
-	s := ActionStatus{
+func MergeAccountActionStatuses(ss ...AccountActionStatus) AccountActionStatus {
+	s := AccountActionStatus{
 		CountByPoolID: make(map[uint64]int),
 		CountByDate:   make(map[string]int),
 	}
@@ -132,4 +132,11 @@ func (c CoinMap) Add(c2 CoinMap) {
 	for denom, amount := range c2 {
 		c[denom] += amount
 	}
+}
+
+type Event struct {
+	Text     string    `bson:"text"`
+	URL      string    `bson:"url"`
+	StartsAt time.Time `bson:"startsAt"`
+	EndsAt   time.Time `bson:"endsAt"`
 }

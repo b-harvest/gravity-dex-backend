@@ -18,12 +18,12 @@ type StateUpdates struct {
 	swapVolumesByPoolID    VolumesByPoolID
 }
 
-type ActionStatusByAddress map[string]schema.ActionStatus
+type ActionStatusByAddress map[string]schema.AccountActionStatus
 
-func (m ActionStatusByAddress) ActionStatus(addr string) schema.ActionStatus {
+func (m ActionStatusByAddress) ActionStatus(addr string) schema.AccountActionStatus {
 	st, ok := m[addr]
 	if !ok {
-		st = schema.NewActionStatus()
+		st = schema.NewAccountActionStatus()
 		m[addr] = st
 	}
 	return st

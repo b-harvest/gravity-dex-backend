@@ -46,15 +46,15 @@ type MongoDBConfig struct {
 }
 
 var DefaultRedisConfig = RedisConfig{
-	URI:                "redis://localhost",
-	ScoreBoardCacheKey: "gdex:score_board",
-	PoolsCacheKey:      "gdex:pools",
-	PricesCacheKey:     "gdex:prices",
+	URI:              "redis://localhost",
+	AccountsCacheKey: "gdex:score_board",
+	PoolsCacheKey:    "gdex:pools",
+	PricesCacheKey:   "gdex:prices",
 }
 
 type RedisConfig struct {
-	URI                string `yaml:"uri"`
-	ScoreBoardCacheKey string `yaml:"score_board_cache_key"`
-	PoolsCacheKey      string `yaml:"pools_cache_key"`
-	PricesCacheKey     string `yaml:"prices_cache_key"`
+	URI              string `yaml:"uri"`
+	AccountsCacheKey string `yaml:"score_board_cache_key"`
+	PoolsCacheKey    string `yaml:"pools_cache_key"`
+	PricesCacheKey   string `yaml:"prices_cache_key"`
 }

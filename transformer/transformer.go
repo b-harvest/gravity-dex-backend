@@ -192,8 +192,8 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 				return fmt.Errorf("find account: %w", err)
 			}
 		}
-		acc.DepositStatus = schema.MergeActionStatus(acc.DepositStatus, updates.depositStatusByAddress[addr])
-		acc.SwapStatus = schema.MergeActionStatus(acc.SwapStatus, updates.swapStatusByAddress[addr])
+		acc.DepositStatus = schema.MergeAccountActionStatuses(acc.DepositStatus, updates.depositStatusByAddress[addr])
+		acc.SwapStatus = schema.MergeAccountActionStatuses(acc.SwapStatus, updates.swapStatusByAddress[addr])
 		writes = append(writes,
 			mongo.NewUpdateOneModel().
 				SetFilter(bson.M{

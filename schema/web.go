@@ -2,22 +2,22 @@ package schema
 
 import "time"
 
-type StatusResponse struct {
+type GetStatusResponse struct {
 	LatestBlockHeight int64 `json:"latestBlockHeight"`
 }
 
-type ScoreBoardRequest struct {
+type GetScoreBoardRequest struct {
 	Address string `query:"address"`
 }
 
-type ScoreBoardResponse struct {
-	BlockHeight int64               `json:"blockHeight"`
-	Me          *ScoreBoardAccount  `json:"me"`
-	Accounts    []ScoreBoardAccount `json:"accounts"`
-	UpdatedAt   time.Time           `json:"updatedAt"`
+type GetScoreBoardResponse struct {
+	BlockHeight int64                          `json:"blockHeight"`
+	Me          *GetScoreBoardResponseAccount  `json:"me"`
+	Accounts    []GetScoreBoardResponseAccount `json:"accounts"`
+	UpdatedAt   time.Time                      `json:"updatedAt"`
 }
 
-type ScoreBoardAccount struct {
+type GetScoreBoardResponseAccount struct {
 	Ranking      int     `json:"ranking"`
 	Username     string  `json:"username"`
 	Address      string  `json:"address"`
@@ -32,32 +32,36 @@ type SearchAccountRequest struct {
 }
 
 type SearchAccountResponse struct {
-	BlockHeight int64 `json:"blockHeight"`
-	Account     *ScoreBoardAccount
-	UpdatedAt   time.Time `json:"updatedAt"`
+	BlockHeight int64                         `json:"blockHeight"`
+	Account     *GetScoreBoardResponseAccount `json:"account"`
+	UpdatedAt   time.Time                     `json:"updatedAt"`
 }
 
-type PoolsResponse struct {
-	BlockHeight int64               `json:"blockHeight"`
-	Pools       []PoolsResponsePool `json:"pools"`
-	UpdatedAt   time.Time           `json:"updatedAt"`
+type GetActionStatusRequest struct {
+	Address string `query:"address"`
 }
 
-type PoolsResponsePool struct {
-	ID           uint64              `json:"id"`
-	ReserveCoins []PoolsResponseCoin `json:"reserveCoins"`
-	PoolCoin     PoolsResponseCoin   `json:"poolCoin"`
-	APY          float64             `json:"apy"`
+type GetActionStatusResponse struct {
+	BlockHeight int64                           `json:"blockHeight"`
+	Account     *GetActionStatusResponseAccount `json:"account"`
+	UpdatedAt   time.Time                       `json:"updatedAt"`
 }
 
-type PoolsResponseCoin struct {
-	Denom       string  `json:"denom"`
-	Amount      int64   `json:"amount"`
-	GlobalPrice float64 `json:"globalPrice"`
+type GetActionStatusResponseAccount struct {
+	Deposit GetActionStatusResponseStatus `json:"deposit"`
+	Swap    GetActionStatusResponseStatus `json:"swap"`
 }
 
-type PricesResponse struct {
-	BlockHeight int64              `json:"blockHeight"`
-	Prices      map[string]float64 `json:"prices"`
-	UpdatedAt   time.Time          `json:"updatedAt"`
+type GetActionStatusResponseStatus struct {
+	NumDifferentPools int `json:"numDifferentPools"`
+	TodayCount        int `json:"todayCount"`
+	TodayMaxCount     int `json:"todayMaxCount"`
+}
+
+type GetPoolsResponse PoolsCache
+
+type GetPricesResponse PricesCache
+
+type GetEventsResponse struct {
+	NextEvent Event `json:"nextEvent"`
 }
