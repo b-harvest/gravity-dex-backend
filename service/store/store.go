@@ -31,6 +31,10 @@ func (s *Service) AccountCollection() *mongo.Collection {
 	return s.mc.Database(s.cfg.DB).Collection(s.cfg.AccountCollection)
 }
 
+func (s *Service) AccountMetadataCollection() *mongo.Collection {
+	return s.mc.Database(s.cfg.DB).Collection(s.cfg.AccountMetadataCollection)
+}
+
 func (s *Service) PoolCollection() *mongo.Collection {
 	return s.mc.Database(s.cfg.DB).Collection(s.cfg.PoolCollection)
 }
@@ -48,6 +52,9 @@ func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
 		{s.AccountCollection(), []mongo.IndexModel{
 			{Keys: bson.D{{schema.AccountBlockHeightKey, 1}}},
 			{Keys: bson.D{{schema.AccountBlockHeightKey, 1}, {schema.AccountAddressKey, 1}}},
+		}},
+		{s.AccountMetadataCollection(), []mongo.IndexModel{
+			{Keys: bson.D{{schema.AccountMetadataAddressKey, 1}}},
 		}},
 		{s.PoolCollection(), []mongo.IndexModel{
 			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}}},
@@ -82,9 +89,37 @@ func (s *Service) LatestBlockHeight(ctx context.Context) (int64, error) {
 }
 
 func (s *Service) IterateAccounts(ctx context.Context, blockHeight int64, cb func(schema.Account) (stop bool, err error)) error {
-	cur, err := s.AccountCollection().Find(ctx, bson.M{schema.AccountBlockHeightKey: blockHeight})
+	cur, err := s.AccountCollection().Aggregate(ctx, bson.A{
+		bson.M{
+			"$match": bson.M{
+				schema.AccountBlockHeightKey: blockHeight,
+			},
+		},
+		bson.M{
+			"$lookup": bson.M{
+				"from":         s.cfg.AccountMetadataCollection,
+				"foreignField": schema.AccountMetadataAddressKey,
+				"localField":   schema.AccountAddressKey,
+				"as":           schema.AccountMetadataKey,
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				schema.AccountMetadataKey: bson.M{
+					"$arrayElemAt": bson.A{"$" + schema.AccountMetadataKey, 0},
+				},
+			},
+		},
+		bson.M{
+			"$match": bson.M{
+				schema.AccountMetadataKey + "." + schema.AccountMetadataIsBlockedKey: bson.M{
+					"$in": bson.A{false, nil},
+				},
+			},
+		},
+	})
 	if err != nil {
-		return fmt.Errorf("find accounts: %w", err)
+		return fmt.Errorf("aggregate accounts: %w", err)
 	}
 	defer cur.Close(ctx)
 	for cur.Next(ctx) {

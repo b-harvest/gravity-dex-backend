@@ -206,9 +206,6 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 						schema.AccountDepositStatusKey: acc.DepositStatus,
 						schema.AccountSwapStatusKey:    acc.SwapStatus,
 					},
-					"$setOnInsert": bson.M{
-						schema.AccountUsernameKey: acc.Username,
-					},
 				}).
 				SetUpsert(true))
 	}

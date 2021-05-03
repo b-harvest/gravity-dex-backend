@@ -14,20 +14,20 @@ type Checkpoint struct {
 
 const (
 	AccountBlockHeightKey   = "blockHeight"
-	AccountUsernameKey      = "username"
 	AccountAddressKey       = "address"
 	AccountCoinsKey         = "coins"
 	AccountDepositStatusKey = "depositStatus"
 	AccountSwapStatusKey    = "swapStatus"
+	AccountMetadataKey      = "metadata"
 )
 
 type Account struct {
 	BlockHeight   int64               `bson:"blockHeight"`
-	Username      string              `bson:"username"`
 	Address       string              `bson:"address"`
 	Coins         []Coin              `bson:"coins"`
 	DepositStatus AccountActionStatus `bson:"depositStatus"`
 	SwapStatus    AccountActionStatus `bson:"swapStatus"`
+	Metadata      *AccountMetadata    `bson:"metadata"`
 }
 
 type Coin struct {
@@ -84,6 +84,18 @@ func MergeAccountActionStatuses(ss ...AccountActionStatus) AccountActionStatus {
 		}
 	}
 	return s
+}
+
+const (
+	AccountMetadataAddressKey   = "address"
+	AccountMetadataIsBlockedKey = "isBlocked"
+)
+
+type AccountMetadata struct {
+	Address   string    `bson:"address"`
+	Username  string    `bson:"username"`
+	IsBlocked bool      `bson:"isBlocked"`
+	BlockedAt time.Time `bson:"blockedAt"`
 }
 
 const (

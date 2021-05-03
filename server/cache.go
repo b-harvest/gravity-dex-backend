@@ -23,6 +23,10 @@ func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, pri
 		Accounts:    []schema.AccountsCacheAccount{},
 	}
 	if err := s.ss.IterateAccounts(ctx, blockHeight, func(acc schema.Account) (stop bool, err error) {
+		var username string
+		if acc.Metadata != nil {
+			username = acc.Metadata.Username
+		}
 		ts, err := s.tradingScore(acc, priceTable)
 		if err != nil {
 			return true, fmt.Errorf("calculate trading score for account %q: %w", acc.Address, err)
@@ -30,7 +34,7 @@ func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, pri
 		as, valid := s.actionScore(acc)
 		cache.Accounts = append(cache.Accounts, schema.AccountsCacheAccount{
 			Address:      acc.Address,
-			Username:     acc.Username,
+			Username:     username,
 			TotalScore:   ts*s.cfg.TradingScoreRatio + as*(1-s.cfg.TradingScoreRatio),
 			TradingScore: ts,
 			ActionScore:  as,
