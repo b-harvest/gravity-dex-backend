@@ -27,6 +27,9 @@ func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, pri
 		if acc.Metadata != nil {
 			username = acc.Metadata.Username
 		}
+		if username == "" {
+			return false, nil
+		}
 		ts, err := s.tradingScore(acc, priceTable)
 		if err != nil {
 			return true, fmt.Errorf("calculate trading score for account %q: %w", acc.Address, err)
