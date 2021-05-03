@@ -35,6 +35,7 @@ var DefaultMongoDBConfig = MongoDBConfig{
 	CheckpointCollection: "checkpoint",
 	AccountCollection:    "accounts",
 	PoolCollection:       "pools",
+	EventCollection:      "events",
 }
 
 type MongoDBConfig struct {
@@ -43,18 +44,19 @@ type MongoDBConfig struct {
 	CheckpointCollection string `yaml:"checkpoint_collection"`
 	AccountCollection    string `yaml:"account_collection"`
 	PoolCollection       string `yaml:"pool_collection"`
+	EventCollection      string `yaml:"event_collection"`
 }
 
 var DefaultRedisConfig = RedisConfig{
 	URI:              "redis://localhost",
-	AccountsCacheKey: "gdex:score_board",
+	AccountsCacheKey: "gdex:accounts",
 	PoolsCacheKey:    "gdex:pools",
 	PricesCacheKey:   "gdex:prices",
 }
 
 type RedisConfig struct {
 	URI              string `yaml:"uri"`
-	AccountsCacheKey string `yaml:"score_board_cache_key"`
+	AccountsCacheKey string `yaml:"accounts_cache_key"`
 	PoolsCacheKey    string `yaml:"pools_cache_key"`
 	PricesCacheKey   string `yaml:"prices_cache_key"`
 }

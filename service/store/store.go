@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,6 +34,10 @@ func (s *Service) PoolCollection() *mongo.Collection {
 	return s.mc.Database(s.cfg.DB).Collection(s.cfg.PoolCollection)
 }
 
+func (s *Service) EventCollection() *mongo.Collection {
+	return s.mc.Database(s.cfg.DB).Collection(s.cfg.EventCollection)
+}
+
 func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
 	var res []string
 	for _, x := range []struct {
@@ -46,6 +51,11 @@ func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
 		{s.PoolCollection(), []mongo.IndexModel{
 			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}}},
 			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}, {schema.PoolIDKey, 1}}},
+		}},
+		{s.EventCollection(), []mongo.IndexModel{
+			{Keys: bson.D{{schema.EventVisibleAtKey, 1}}},
+			{Keys: bson.D{{schema.EventStartsAtKey, 1}}},
+			{Keys: bson.D{{schema.EventEndsAtKey, 1}}},
 		}},
 	} {
 		names, err := x.coll.Indexes().CreateMany(ctx, x.is)
@@ -103,4 +113,20 @@ func (s *Service) Pools(ctx context.Context, blockHeight int64) ([]schema.Pool, 
 		return nil, fmt.Errorf("decode pools: %w", err)
 	}
 	return ps, nil
+}
+
+func (s *Service) Event(ctx context.Context) (*schema.Event, error) {
+	now := time.Now()
+	var event schema.Event
+	if err := s.EventCollection().FindOne(ctx, bson.M{
+		schema.EventVisibleAtKey: bson.M{
+			"$lte": now,
+		},
+		schema.EventEndsAtKey: bson.M{
+			"$gt": now,
+		},
+	}).Decode(&event); err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, err
+	}
+	return &event, nil
 }

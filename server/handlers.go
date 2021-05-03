@@ -20,7 +20,7 @@ func (s *Server) registerRoutes() {
 	s.GET("/actions", s.GetActionStatus)
 	s.GET("/pools", s.GetPools)
 	s.GET("/prices", s.GetPrices)
-	s.GET("/event", s.GetNextEvent)
+	s.GET("/banner", s.GetEventBanner)
 }
 
 func (s *Server) GetStatus(c echo.Context) error {
@@ -186,6 +186,26 @@ func (s *Server) GetPrices(c echo.Context) error {
 	return c.JSON(http.StatusOK, schema.GetPricesResponse(cache))
 }
 
-func (s *Server) GetNextEvent(c echo.Context) error {
-	return c.NoContent(http.StatusNotImplemented)
+func (s *Server) GetEventBanner(c echo.Context) error {
+	event, err := s.ss.Event(c.Request().Context())
+	if err != nil {
+		return fmt.Errorf("get event: %w", err)
+	}
+	resp := schema.GetEventBannerResponse{}
+	if event != nil {
+		var state schema.GetEventBannerResponseState
+		if event.StartsAt.After(time.Now()) {
+			state = schema.GetEventBannerResponseStateUpcoming
+		} else {
+			state = schema.GetEventBannerResponseStateStarted
+		}
+		resp.Event = &schema.GetEventBannerResponseEvent{
+			State:    state,
+			Text:     event.Text,
+			URL:      event.URL,
+			StartsAt: event.StartsAt,
+			EndsAt:   event.EndsAt,
+		}
+	}
+	return c.JSON(http.StatusOK, resp)
 }

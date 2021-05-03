@@ -210,12 +210,24 @@ If there is no account with matching address, then `account` field will contain 
 
 - `500 "no price data found"`: There is no server cache of prices.
 
-### Next Event
+### Event Banner
 
 #### Request
 
-`GET /event`
+`GET /banner`
 
 #### Response
 
--
+```
+{
+  "event": { // optional, can be null.
+    "state": <string>, // "upcoming"|"started"
+    "text": <string>,
+    "url": <string>,
+    "startsAt": <string>,
+    "endsAt": <string>
+  }
+}
+```
+
+If there is no event upcoming or started, then `event` field will contain `null`.

@@ -134,9 +134,16 @@ func (c CoinMap) Add(c2 CoinMap) {
 	}
 }
 
+const (
+	EventVisibleAtKey = "visibleAt"
+	EventStartsAtKey  = "startsAt"
+	EventEndsAtKey    = "endsAt"
+)
+
 type Event struct {
-	Text     string    `bson:"text"`
-	URL      string    `bson:"url"`
-	StartsAt time.Time `bson:"startsAt"`
-	EndsAt   time.Time `bson:"endsAt"`
+	Text      string    `bson:"text"`
+	URL       string    `bson:"url"`
+	VisibleAt time.Time `bson:"visibleAt"`
+	StartsAt  time.Time `bson:"startsAt"`
+	EndsAt    time.Time `bson:"endsAt"`
 }
