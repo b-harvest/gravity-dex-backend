@@ -164,9 +164,10 @@ const (
 )
 
 type Banner struct {
-	Text      string    `bson:"text"`
-	URL       string    `bson:"url"`
-	VisibleAt time.Time `bson:"visibleAt"`
-	StartsAt  time.Time `bson:"startsAt"`
-	EndsAt    time.Time `bson:"endsAt"`
+	UpcomingText string    `bson:"upcomingText"`
+	Text         string    `bson:"text"`
+	URL          string    `bson:"url"`
+	VisibleAt    time.Time `bson:"visibleAt"`
+	StartsAt     time.Time `bson:"startsAt"`
+	EndsAt       time.Time `bson:"endsAt"`
 }

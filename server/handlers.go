@@ -199,9 +199,16 @@ func (s *Server) GetBanner(c echo.Context) error {
 		} else {
 			state = schema.GetBannerResponseStateStarted
 		}
+		var text string
+		switch state {
+		case schema.GetBannerResponseStateUpcoming:
+			text = banner.UpcomingText
+		case schema.GetBannerResponseStateStarted:
+			text = banner.Text
+		}
 		resp.Banner = &schema.GetBannerResponseBanner{
 			State:    state,
-			Text:     banner.Text,
+			Text:     text,
 			URL:      banner.URL,
 			StartsAt: banner.StartsAt,
 			EndsAt:   banner.EndsAt,
