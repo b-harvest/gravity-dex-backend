@@ -115,6 +115,35 @@ If there is no account with matching address or username, then `account` field w
 
 - `500 "no score board data found"`: There is no server cache of score board.
 
+### Action Status
+
+#### Request
+
+`GET /actions?address=<string>`
+
+#### Response
+
+```
+{
+  "blockHeight": <int>,
+  "account": { // optional, can be null.
+    "deposit": {
+      "numDifferentPools": <int>,
+      "todayCount": <int>,
+      "todayMaxCount": <int>
+    },
+    "swap": {
+      "numDifferentPools": <int>,
+      "todayCount": <int>,
+      "todayMaxCount": <int>
+    }
+  },
+  "updatedAt": <string>
+}
+```
+
+If there is no account with matching address, then `account` field will contain `null`.
+
 ### Pools
 
 #### Request
@@ -180,3 +209,13 @@ If there is no account with matching address or username, then `account` field w
 #### Errors
 
 - `500 "no price data found"`: There is no server cache of prices.
+
+### Next Event
+
+#### Request
+
+`GET /event`
+
+#### Response
+
+-

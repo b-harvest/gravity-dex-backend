@@ -20,7 +20,7 @@ func (s *Server) registerRoutes() {
 	s.GET("/actions", s.GetActionStatus)
 	s.GET("/pools", s.GetPools)
 	s.GET("/prices", s.GetPrices)
-	s.GET("/events", s.GetEvents)
+	s.GET("/event", s.GetNextEvent)
 }
 
 func (s *Server) GetStatus(c echo.Context) error {
@@ -186,6 +186,6 @@ func (s *Server) GetPrices(c echo.Context) error {
 	return c.JSON(http.StatusOK, schema.GetPricesResponse(cache))
 }
 
-func (s *Server) GetEvents(c echo.Context) error {
+func (s *Server) GetNextEvent(c echo.Context) error {
 	return c.NoContent(http.StatusNotImplemented)
 }
