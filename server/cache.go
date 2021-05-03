@@ -95,6 +95,9 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 			APY: feeValue / poolValue * 24 * 365,
 		})
 	}
+	sort.Slice(pools, func(i, j int) bool {
+		return pools[i].ID < pools[j].ID
+	})
 	cache.UpdatedAt = time.Now()
 	if err := s.SavePoolsCache(ctx, cache); err != nil {
 		return fmt.Errorf("save cache: %w", err)
