@@ -26,7 +26,11 @@ func (s *CyberNodeService) Prices(ctx context.Context, symbols ...string) (Table
 		return nil, fmt.Errorf("only \"gcyb\" symbol can be queried through CyberNodeService")
 	}
 	if len(s.cs.NewSymbols("gcyb")) > 0 {
-		resp, err := s.hc.Get("https://market-data.cybernode.ai/api/coins/cyb")
+		req, err := http.NewRequestWithContext(ctx, "GET", "https://market-data.cybernode.ai/api/coins/cyb", nil)
+		if err != nil {
+			return nil, fmt.Errorf("new request: %w", err)
+		}
+		resp, err := s.hc.Do(req)
 		if err != nil {
 			return nil, err
 		}
