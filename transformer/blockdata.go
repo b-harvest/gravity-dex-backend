@@ -10,7 +10,7 @@ import (
 )
 
 type BlockData struct {
-	Header          tmproto.Header         `json:"BlockHeader"`
+	Header          tmproto.Header         `json:"block_header"`
 	BankModuleState banktypes.GenesisState `json:"bank_module_states"`
 	Events          sdk.Events             `json:"end_block_events"`
 	Pools           []liquiditytypes.Pool  `json:"pools"`
