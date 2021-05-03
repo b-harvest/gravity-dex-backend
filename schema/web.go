@@ -62,21 +62,21 @@ type GetPoolsResponse PoolsCache
 
 type GetPricesResponse PricesCache
 
-type GetEventBannerResponse struct {
-	Event *GetEventBannerResponseEvent `json:"event"`
+type GetBannerResponse struct {
+	Banner *GetBannerResponseBanner `json:"banner"`
 }
 
-type GetEventBannerResponseEvent struct {
-	State    GetEventBannerResponseState `json:"state"`
-	Text     string                      `json:"text"`
-	URL      string                      `json:"url"`
-	StartsAt time.Time                   `json:"startsAt"`
-	EndsAt   time.Time                   `json:"endsAt"`
+type GetBannerResponseBanner struct {
+	State    GetBannerResponseState `json:"state"`
+	Text     string                 `json:"text"`
+	URL      string                 `json:"url"`
+	StartsAt time.Time              `json:"startsAt"`
+	EndsAt   time.Time              `json:"endsAt"`
 }
 
-type GetEventBannerResponseState string
+type GetBannerResponseState string
 
 const (
-	GetEventBannerResponseStateUpcoming = GetEventBannerResponseState("upcoming")
-	GetEventBannerResponseStateStarted  = GetEventBannerResponseState("started")
+	GetBannerResponseStateUpcoming = GetBannerResponseState("upcoming")
+	GetBannerResponseStateStarted  = GetBannerResponseState("started")
 )

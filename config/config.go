@@ -35,7 +35,7 @@ var DefaultMongoDBConfig = MongoDBConfig{
 	CheckpointCollection: "checkpoint",
 	AccountCollection:    "accounts",
 	PoolCollection:       "pools",
-	EventCollection:      "events",
+	BannerCollection:     "banners",
 }
 
 type MongoDBConfig struct {
@@ -44,7 +44,7 @@ type MongoDBConfig struct {
 	CheckpointCollection string `yaml:"checkpoint_collection"`
 	AccountCollection    string `yaml:"account_collection"`
 	PoolCollection       string `yaml:"pool_collection"`
-	EventCollection      string `yaml:"event_collection"`
+	BannerCollection     string `yaml:"banner_collection"`
 }
 
 var DefaultRedisConfig = RedisConfig{

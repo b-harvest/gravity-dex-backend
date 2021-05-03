@@ -20,7 +20,7 @@ func (s *Server) registerRoutes() {
 	s.GET("/actions", s.GetActionStatus)
 	s.GET("/pools", s.GetPools)
 	s.GET("/prices", s.GetPrices)
-	s.GET("/banner", s.GetEventBanner)
+	s.GET("/banner", s.GetBanner)
 }
 
 func (s *Server) GetStatus(c echo.Context) error {
@@ -186,25 +186,25 @@ func (s *Server) GetPrices(c echo.Context) error {
 	return c.JSON(http.StatusOK, schema.GetPricesResponse(cache))
 }
 
-func (s *Server) GetEventBanner(c echo.Context) error {
-	event, err := s.ss.Event(c.Request().Context())
+func (s *Server) GetBanner(c echo.Context) error {
+	banner, err := s.ss.Banner(c.Request().Context(), time.Now())
 	if err != nil {
-		return fmt.Errorf("get event: %w", err)
+		return fmt.Errorf("get banner: %w", err)
 	}
-	resp := schema.GetEventBannerResponse{}
-	if event != nil {
-		var state schema.GetEventBannerResponseState
-		if event.StartsAt.After(time.Now()) {
-			state = schema.GetEventBannerResponseStateUpcoming
+	resp := schema.GetBannerResponse{}
+	if banner != nil {
+		var state schema.GetBannerResponseState
+		if banner.StartsAt.After(time.Now()) {
+			state = schema.GetBannerResponseStateUpcoming
 		} else {
-			state = schema.GetEventBannerResponseStateStarted
+			state = schema.GetBannerResponseStateStarted
 		}
-		resp.Event = &schema.GetEventBannerResponseEvent{
+		resp.Banner = &schema.GetBannerResponseBanner{
 			State:    state,
-			Text:     event.Text,
-			URL:      event.URL,
-			StartsAt: event.StartsAt,
-			EndsAt:   event.EndsAt,
+			Text:     banner.Text,
+			URL:      banner.URL,
+			StartsAt: banner.StartsAt,
+			EndsAt:   banner.EndsAt,
 		}
 	}
 	return c.JSON(http.StatusOK, resp)

@@ -8,6 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
@@ -34,8 +35,8 @@ func (s *Service) PoolCollection() *mongo.Collection {
 	return s.mc.Database(s.cfg.DB).Collection(s.cfg.PoolCollection)
 }
 
-func (s *Service) EventCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.DB).Collection(s.cfg.EventCollection)
+func (s *Service) BannerCollection() *mongo.Collection {
+	return s.mc.Database(s.cfg.DB).Collection(s.cfg.BannerCollection)
 }
 
 func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
@@ -52,10 +53,10 @@ func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
 			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}}},
 			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}, {schema.PoolIDKey, 1}}},
 		}},
-		{s.EventCollection(), []mongo.IndexModel{
-			{Keys: bson.D{{schema.EventVisibleAtKey, 1}}},
-			{Keys: bson.D{{schema.EventStartsAtKey, 1}}},
-			{Keys: bson.D{{schema.EventEndsAtKey, 1}}},
+		{s.BannerCollection(), []mongo.IndexModel{
+			{Keys: bson.D{{schema.BannerVisibleAtKey, 1}}},
+			{Keys: bson.D{{schema.BannerStartsAtKey, 1}}},
+			{Keys: bson.D{{schema.BannerEndsAtKey, 1}}},
 		}},
 	} {
 		names, err := x.coll.Indexes().CreateMany(ctx, x.is)
@@ -115,18 +116,20 @@ func (s *Service) Pools(ctx context.Context, blockHeight int64) ([]schema.Pool, 
 	return ps, nil
 }
 
-func (s *Service) Event(ctx context.Context) (*schema.Event, error) {
-	now := time.Now()
-	var event schema.Event
-	if err := s.EventCollection().FindOne(ctx, bson.M{
-		schema.EventVisibleAtKey: bson.M{
+func (s *Service) Banner(ctx context.Context, now time.Time) (*schema.Banner, error) {
+	var b schema.Banner
+	if err := s.BannerCollection().FindOne(ctx, bson.M{
+		schema.BannerVisibleAtKey: bson.M{
 			"$lte": now,
 		},
-		schema.EventEndsAtKey: bson.M{
+		schema.BannerEndsAtKey: bson.M{
 			"$gt": now,
 		},
-	}).Decode(&event); err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, err
+	}, options.FindOne().SetSort(bson.M{schema.BannerStartsAtKey: -1})).Decode(&b); err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, err
+		}
+		return nil, nil
 	}
-	return &event, nil
+	return &b, nil
 }

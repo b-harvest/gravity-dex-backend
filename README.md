@@ -210,7 +210,7 @@ If there is no account with matching address, then `account` field will contain 
 
 - `500 "no price data found"`: There is no server cache of prices.
 
-### Event Banner
+### Banner
 
 #### Request
 
@@ -220,7 +220,7 @@ If there is no account with matching address, then `account` field will contain 
 
 ```
 {
-  "event": { // optional, can be null.
+  "banner": { // optional, can be null.
     "state": <string>, // "upcoming"|"started"
     "text": <string>,
     "url": <string>,
