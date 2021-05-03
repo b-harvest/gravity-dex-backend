@@ -36,28 +36,51 @@ type Coin struct {
 }
 
 type AccountActionStatus struct {
-	CountByPoolID map[uint64]int `bson:"countByPoolID"`
-	CountByDate   map[string]int `bson:"countByDate"`
+	CountByPoolID       CountByPoolID            `bson:"countByPoolID"`
+	CountByPoolIDByDate map[string]CountByPoolID `bson:"countByPoolIDByDate"`
 }
+
+type CountByPoolID map[uint64]int
 
 func NewAccountActionStatus() AccountActionStatus {
 	return AccountActionStatus{
-		CountByPoolID: make(map[uint64]int),
-		CountByDate:   make(map[string]int),
+		CountByPoolID:       make(CountByPoolID),
+		CountByPoolIDByDate: make(map[string]CountByPoolID),
 	}
+}
+
+func (s AccountActionStatus) NumDifferentPools() int {
+	return len(s.CountByPoolID)
+}
+
+func (s AccountActionStatus) NumDifferentPoolsByDate() map[string]int {
+	m := make(map[string]int)
+	for date, c := range s.CountByPoolIDByDate {
+		m[date] = len(c)
+	}
+	return m
+}
+
+func (s *AccountActionStatus) IncreaseCount(poolID uint64, date string, amount int) {
+	s.CountByPoolID[poolID] += amount
+	c, ok := s.CountByPoolIDByDate[date]
+	if !ok {
+		c = make(CountByPoolID)
+		s.CountByPoolIDByDate[date] = c
+	}
+	c[poolID] += amount
 }
 
 func MergeAccountActionStatuses(ss ...AccountActionStatus) AccountActionStatus {
 	s := AccountActionStatus{
-		CountByPoolID: make(map[uint64]int),
-		CountByDate:   make(map[string]int),
+		CountByPoolID:       make(CountByPoolID),
+		CountByPoolIDByDate: make(map[string]CountByPoolID),
 	}
 	for _, s2 := range ss {
-		for id, c := range s2.CountByPoolID {
-			s.CountByPoolID[id] += c
-		}
-		for date, c := range s2.CountByDate {
-			s.CountByDate[date] += c
+		for date, c := range s2.CountByPoolIDByDate {
+			for id, c2 := range c {
+				s.IncreaseCount(id, date, c2)
+			}
 		}
 	}
 	return s

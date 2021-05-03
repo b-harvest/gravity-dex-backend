@@ -21,8 +21,8 @@ type AccountsCacheAccount struct {
 }
 
 type AccountCacheActionStatus struct {
-	NumDifferentPools int            `json:"numDifferentPools"`
-	CountByDate       map[string]int `json:"countByDate"`
+	NumDifferentPools       int            `json:"numDifferentPools"`
+	NumDifferentPoolsByDate map[string]int `json:"numDifferentPoolsByDate"`
 }
 
 type PoolsCache struct {

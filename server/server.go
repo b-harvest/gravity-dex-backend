@@ -68,8 +68,8 @@ func (s *Server) tradingScore(acc schema.Account, priceTable price.Table) (float
 
 func (s *Server) actionScore(acc schema.Account) (score float64, valid bool) {
 	for _, k := range s.cfg.TradingDates {
-		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, acc.DepositStatus.CountByDate[k]))
-		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, acc.SwapStatus.CountByDate[k]))
+		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, len(acc.DepositStatus.CountByPoolIDByDate[k])))
+		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, len(acc.SwapStatus.CountByPoolIDByDate[k])))
 	}
 	score /= float64((2 * s.cfg.MaxActionScorePerDay) * len(s.cfg.TradingDates))
 	score *= 100

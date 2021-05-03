@@ -91,8 +91,7 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 					return nil, nil, err
 				}
 				st := updates.depositStatusByAddress.ActionStatus(addr)
-				st.CountByPoolID[poolID]++
-				st.CountByDate[dateKey]++
+				st.IncreaseCount(poolID, dateKey, 1)
 			case liquiditytypes.EventTypeSwapTransacted:
 				attrs := eventAttrsFromEvent(evt)
 				addr, err := attrs.SwapRequesterAddr()
@@ -130,8 +129,7 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 					demandCoinFee = sdk.NewCoin(demandCoinDenom, offerCoinFee.Amount.ToDec().Mul(swapPrice).TruncateInt())
 				}
 				st := updates.swapStatusByAddress.ActionStatus(addr)
-				st.CountByPoolID[poolID]++
-				st.CountByDate[dateKey]++
+				st.IncreaseCount(poolID, dateKey, 1)
 				updates.swapVolumesByPoolID.Volumes(poolID).AddCoins(tm, schema.CoinMap{
 					offerCoinFee.Denom:  offerCoinFee.Amount.Int64(),
 					demandCoinFee.Denom: demandCoinFee.Amount.Int64(),

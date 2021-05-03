@@ -53,9 +53,9 @@ type GetActionStatusResponseAccount struct {
 }
 
 type GetActionStatusResponseStatus struct {
-	NumDifferentPools int `json:"numDifferentPools"`
-	TodayCount        int `json:"todayCount"`
-	TodayMaxCount     int `json:"todayMaxCount"`
+	NumDifferentPools         int `json:"numDifferentPools"`
+	NumDifferentPoolsToday    int `json:"numDifferentPoolsToday"`
+	MaxNumDifferentPoolsToday int `json:"maxNumDifferentPoolsToday"`
 }
 
 type GetPoolsResponse PoolsCache

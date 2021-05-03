@@ -36,12 +36,12 @@ func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, pri
 			ActionScore:  as,
 			IsValid:      valid,
 			DepositStatus: schema.AccountCacheActionStatus{
-				NumDifferentPools: len(acc.DepositStatus.CountByPoolID),
-				CountByDate:       acc.DepositStatus.CountByDate,
+				NumDifferentPools:       acc.DepositStatus.NumDifferentPools(),
+				NumDifferentPoolsByDate: acc.DepositStatus.NumDifferentPoolsByDate(),
 			},
 			SwapStatus: schema.AccountCacheActionStatus{
-				NumDifferentPools: len(acc.SwapStatus.CountByPoolID),
-				CountByDate:       acc.SwapStatus.CountByDate,
+				NumDifferentPools:       acc.SwapStatus.NumDifferentPools(),
+				NumDifferentPoolsByDate: acc.SwapStatus.NumDifferentPoolsByDate(),
 			},
 		})
 		return false, nil

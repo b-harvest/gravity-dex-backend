@@ -129,13 +129,13 @@ If there is no account with matching address or username, then `account` field w
   "account": { // optional, can be null.
     "deposit": {
       "numDifferentPools": <int>,
-      "todayCount": <int>,
-      "todayMaxCount": <int>
+      "numDifferentPoolsToday": <int>,
+      "maxNumDifferentPoolsToday": <int>
     },
     "swap": {
       "numDifferentPools": <int>,
-      "todayCount": <int>,
-      "todayMaxCount": <int>
+      "numDifferentPoolsToday": <int>,
+      "maxNumDifferentPoolsToday": <int>
     }
   },
   "updatedAt": <string>

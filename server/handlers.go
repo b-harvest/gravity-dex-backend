@@ -141,14 +141,14 @@ func (s *Server) GetActionStatus(c echo.Context) error {
 		if acc.Address == req.Address {
 			resp.Account = &schema.GetActionStatusResponseAccount{
 				Deposit: schema.GetActionStatusResponseStatus{
-					NumDifferentPools: acc.DepositStatus.NumDifferentPools,
-					TodayCount:        acc.DepositStatus.CountByDate[todayKey],
-					TodayMaxCount:     s.cfg.MaxActionScorePerDay,
+					NumDifferentPools:         acc.DepositStatus.NumDifferentPools,
+					NumDifferentPoolsToday:    acc.DepositStatus.NumDifferentPoolsByDate[todayKey],
+					MaxNumDifferentPoolsToday: s.cfg.MaxActionScorePerDay,
 				},
 				Swap: schema.GetActionStatusResponseStatus{
-					NumDifferentPools: acc.SwapStatus.NumDifferentPools,
-					TodayCount:        acc.SwapStatus.CountByDate[todayKey],
-					TodayMaxCount:     s.cfg.MaxActionScorePerDay,
+					NumDifferentPools:         acc.SwapStatus.NumDifferentPools,
+					NumDifferentPoolsToday:    acc.SwapStatus.NumDifferentPoolsByDate[todayKey],
+					MaxNumDifferentPoolsToday: s.cfg.MaxActionScorePerDay,
 				},
 			}
 		}
