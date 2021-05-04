@@ -102,7 +102,8 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 				Amount:      p.PoolCoin.Amount,
 				GlobalPrice: priceTable[p.PoolCoin.Denom],
 			},
-			APY: feeValue / poolValue * 24 * 365,
+			SwapFeeValueSinceLastHour: feeValue,
+			APY:                       feeValue / poolValue * 24 * 365,
 		})
 	}
 	sort.Slice(pools, func(i, j int) bool {

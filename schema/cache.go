@@ -32,10 +32,11 @@ type PoolsCache struct {
 }
 
 type PoolsCachePool struct {
-	ID           uint64           `json:"id"`
-	ReserveCoins []PoolsCacheCoin `json:"reserveCoins"`
-	PoolCoin     PoolsCacheCoin   `json:"poolCoin"`
-	APY          float64          `json:"apy"`
+	ID                        uint64           `json:"id"`
+	ReserveCoins              []PoolsCacheCoin `json:"reserveCoins"`
+	PoolCoin                  PoolsCacheCoin   `json:"poolCoin"`
+	SwapFeeValueSinceLastHour float64          `json:"swapFeeValueSinceLastHour"`
+	APY                       float64          `json:"apy"`
 }
 
 type PoolsCacheCoin struct {

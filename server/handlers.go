@@ -10,7 +10,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/b-harvest/gravity-dex-backend/schema"
-	"github.com/b-harvest/gravity-dex-backend/util"
 )
 
 func (s *Server) registerRoutes() {
@@ -54,22 +53,30 @@ func (s *Server) GetScoreBoard(c echo.Context) error {
 		Accounts:    []schema.GetScoreBoardResponseAccount{},
 		UpdatedAt:   cache.UpdatedAt,
 	}
-	for _, acc := range cache.Accounts {
-		acc2 := schema.GetScoreBoardResponseAccount{
-			Ranking:      acc.Ranking,
-			Username:     acc.Username,
-			Address:      acc.Address,
-			TotalScore:   acc.TotalScore,
-			TradingScore: acc.TradingScore,
-			ActionScore:  acc.ActionScore,
-			IsValid:      acc.IsValid,
-		}
+	for i, acc := range cache.Accounts {
 		if req.Address != "" && acc.Address == req.Address {
-			resp.Me = &acc2
+			resp.Me = &schema.GetScoreBoardResponseAccount{
+				Ranking:      acc.Ranking,
+				Username:     acc.Username,
+				Address:      acc.Address,
+				TotalScore:   acc.TotalScore,
+				TradingScore: acc.TradingScore,
+				ActionScore:  acc.ActionScore,
+				IsValid:      acc.IsValid,
+			}
 		}
-		resp.Accounts = append(resp.Accounts, acc2)
+		if i < s.cfg.ScoreBoardSize {
+			resp.Accounts = append(resp.Accounts, schema.GetScoreBoardResponseAccount{
+				Ranking:      acc.Ranking,
+				Username:     acc.Username,
+				Address:      acc.Address,
+				TotalScore:   acc.TotalScore,
+				TradingScore: acc.TradingScore,
+				ActionScore:  acc.ActionScore,
+				IsValid:      acc.IsValid,
+			})
+		}
 	}
-	resp.Accounts = resp.Accounts[:util.MinInt(s.cfg.ScoreBoardSize, len(resp.Accounts))]
 	return c.JSON(http.StatusOK, resp)
 }
 
@@ -151,6 +158,7 @@ func (s *Server) GetActionStatus(c echo.Context) error {
 					MaxNumDifferentPoolsToday: s.cfg.MaxActionScorePerDay,
 				},
 			}
+			break
 		}
 	}
 	return c.JSON(http.StatusOK, resp)
