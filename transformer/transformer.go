@@ -202,6 +202,7 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 		acc.DepositStatus = schema.MergeAccountActionStatuses(acc.DepositStatus, updates.depositStatusByAddress[addr])
 		acc.SwapStatus = schema.MergeAccountActionStatuses(acc.SwapStatus, updates.swapStatusByAddress[addr])
 		set := bson.M{
+			schema.AccountCoinsKey:         acc.Coins,
 			schema.AccountDepositStatusKey: acc.DepositStatus,
 			schema.AccountSwapStatusKey:    acc.SwapStatus,
 		}
@@ -214,6 +215,43 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 				SetFilter(bson.M{
 					schema.AccountBlockHeightKey: lastBlockHeight,
 					schema.AccountAddressKey:     addr,
+				}).
+				SetUpdate(bson.M{"$set": set}).
+				SetUpsert(true))
+	}
+	if len(writes) > 0 {
+		if _, err := t.AccountCollection().BulkWrite(ctx, writes); err != nil {
+			return fmt.Errorf("bulk write: %w", err)
+		}
+	}
+	cur, err := t.AccountCollection().Find(ctx, bson.M{schema.AccountBlockHeightKey: currentBlockHeight})
+	if err != nil {
+		return fmt.Errorf("find accounts: %w", err)
+	}
+	defer cur.Close(ctx)
+	writes = nil
+	for cur.Next(ctx) {
+		var acc schema.Account
+		if err := cur.Decode(&acc); err != nil {
+			return fmt.Errorf("decode account: %w", err)
+		}
+		if _, ok := addrsToUpdate[acc.Address]; ok {
+			continue
+		}
+		set := bson.M{
+			schema.AccountCoinsKey:         acc.Coins,
+			schema.AccountDepositStatusKey: acc.DepositStatus,
+			schema.AccountSwapStatusKey:    acc.SwapStatus,
+		}
+		b, ok := balancesByAddr[acc.Address]
+		if ok {
+			set[schema.AccountCoinsKey] = b
+		}
+		writes = append(writes,
+			mongo.NewUpdateOneModel().
+				SetFilter(bson.M{
+					schema.AccountBlockHeightKey: lastBlockHeight,
+					schema.AccountAddressKey:     acc.Address,
 				}).
 				SetUpdate(bson.M{"$set": set}).
 				SetUpsert(true))
@@ -241,6 +279,8 @@ func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight, lastB
 		pool.SwapFeeVolumes = schema.MergeVolumes(pool.SwapFeeVolumes, updates.swapVolumesByPoolID[p.Id])
 		pool.SwapFeeVolumes.RemoveOutdated(data.Header.Time.Add(-time.Hour))
 		set := bson.M{
+			schema.PoolPoolCoinKey:       pool.PoolCoin,
+			schema.PoolReserveCoinsKey:   pool.ReserveCoins,
 			schema.PoolSwapFeeVolumesKey: pool.SwapFeeVolumes,
 		}
 		b, ok := balancesByAddr[p.ReserveAccountAddress]

@@ -114,7 +114,7 @@ type Pool struct {
 	BlockHeight    int64   `bson:"blockHeight"`
 	ID             uint64  `bson:"id"`
 	ReserveCoins   []Coin  `bson:"reserveCoins"`
-	PoolCoin       Coin    `bson:"poolCoin"`
+	PoolCoin       *Coin   `bson:"poolCoin,omitempty"`
 	SwapFeeVolumes Volumes `bson:"swapFeeVolumes"`
 }
 
