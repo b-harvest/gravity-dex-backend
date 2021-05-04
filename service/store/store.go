@@ -67,6 +67,7 @@ func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
 	}{
 		{s.AccountCollection(), []mongo.IndexModel{
 			{Keys: bson.D{{schema.AccountAddressKey, 1}}},
+			{Keys: bson.D{{schema.AccountUsernameKey, 1}}},
 		}},
 		{s.AccountStatusCollection(), []mongo.IndexModel{
 			{Keys: bson.D{{schema.AccountStatusAddressKey, 1}}},
@@ -178,6 +179,16 @@ func (s *Service) PoolStatus(ctx context.Context, blockHeight int64, id uint64) 
 		return schema.PoolStatus{}, err
 	}
 	return poolStatus, nil
+}
+
+func (s *Service) AccountByUsername(ctx context.Context, username string) (schema.Account, error) {
+	var acc schema.Account
+	if err := s.AccountCollection().FindOne(ctx, bson.M{
+		schema.AccountUsernameKey: username,
+	}).Decode(&acc); err != nil {
+		return schema.Account{}, err
+	}
+	return acc, nil
 }
 
 func (s *Service) IterateAccounts(ctx context.Context, blockHeight int64, cb func(schema.Account) (stop bool, err error)) error {

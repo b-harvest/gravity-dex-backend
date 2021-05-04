@@ -2,13 +2,8 @@ package schema
 
 import "time"
 
-type AccountsCache struct {
-	BlockHeight int64                  `json:"blockHeight"`
-	Accounts    []AccountsCacheAccount `json:"accounts"`
-	UpdatedAt   time.Time              `json:"updatedAt"`
-}
-
-type AccountsCacheAccount struct {
+type AccountCache struct {
+	BlockHeight   int64                    `json:"blockHeight"`
 	Address       string                   `json:"address"`
 	Username      string                   `json:"username"`
 	Ranking       int                      `json:"ranking"`
@@ -18,11 +13,18 @@ type AccountsCacheAccount struct {
 	IsValid       bool                     `json:"isValid"`
 	DepositStatus AccountCacheActionStatus `json:"depositStatus"`
 	SwapStatus    AccountCacheActionStatus `json:"swapStatus"`
+	UpdatedAt     time.Time                `json:"updatedAt"`
 }
 
 type AccountCacheActionStatus struct {
 	NumDifferentPools       int            `json:"numDifferentPools"`
 	NumDifferentPoolsByDate map[string]int `json:"numDifferentPoolsByDate"`
+}
+
+type ScoreBoardCache struct {
+	BlockHeight int64          `json:"blockHeight"`
+	Accounts    []AccountCache `json:"accounts"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
 }
 
 type PoolsCache struct {

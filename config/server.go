@@ -62,6 +62,7 @@ var DefaultServerConfig = ServerConfig{
 	ScoreBoardSize:       100,
 	CacheLoadTimeout:     10 * time.Second,
 	CacheUpdateInterval:  5 * time.Second,
+	AddressPrefix:        "cosmos1",
 	MongoDB:              DefaultMongoDBConfig,
 	Redis:                DefaultRedisConfig,
 	Log:                  zap.NewProductionConfig(),
@@ -84,6 +85,7 @@ type ServerConfig struct {
 	ScoreBoardSize       int                 `yaml:"score_board_size"`
 	CacheLoadTimeout     time.Duration       `yaml:"cache_load_timeout"`
 	CacheUpdateInterval  time.Duration       `yaml:"cache_update_interval"`
+	AddressPrefix        string              `yaml:"address_prefix"`
 	MongoDB              MongoDBConfig       `yaml:"mongodb"`
 	Redis                RedisConfig         `yaml:"redis"`
 	Log                  zap.Config          `yaml:"log"`
