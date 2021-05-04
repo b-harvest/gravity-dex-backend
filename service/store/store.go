@@ -143,8 +143,8 @@ func (s *Service) IterateAccounts(ctx context.Context, blockHeight int64, cb fun
 func (s *Service) Pools(ctx context.Context, blockHeight int64) ([]schema.Pool, error) {
 	cur, err := s.PoolCollection().Find(ctx, bson.M{
 		schema.PoolBlockHeightKey:  blockHeight,
-		schema.PoolReserveCoinsKey: bson.M{"$exists": true},
-		schema.PoolPoolCoinKey:     bson.M{"$exists": true},
+		schema.PoolReserveCoinsKey: bson.M{"$ne": nil},
+		schema.PoolPoolCoinKey:     bson.M{"$ne": nil},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("find pools: %w", err)
