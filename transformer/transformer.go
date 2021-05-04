@@ -123,7 +123,25 @@ func (t *Transformer) blockDataFilename(blockHeight int64) string {
 	return filepath.Join(t.cfg.BlockDataDir, fmt.Sprintf(t.cfg.BlockDataFilename, p, blockHeight))
 }
 
-func (t *Transformer) ReadBlockData(blockHeight int64) (*BlockData, error) {
+func (t *Transformer) ReadBlockData(ctx context.Context, blockHeight int64) (*BlockData, error) {
+	var data *BlockData
+	var err error
+	ticker := util.NewImmediateTicker(t.cfg.BlockDataWaitingInterval)
+	for i := 0; i < 5; i++ {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-ticker.C:
+			data, err = t.readBlockData(blockHeight)
+			if !errors.Is(err, io.EOF) {
+				return data, err
+			}
+		}
+	}
+	return nil, err
+}
+
+func (t *Transformer) readBlockData(blockHeight int64) (*BlockData, error) {
 	f, err := os.Open(t.blockDataFilename(blockHeight))
 	if err != nil {
 		return nil, err
@@ -145,9 +163,9 @@ func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64) (
 		case <-ticker.C:
 		}
 		t.logger.Debug("waiting for the block data", zap.Int64("height", blockHeight))
-		data, err := t.ReadBlockData(blockHeight)
+		data, err := t.ReadBlockData(ctx, blockHeight)
 		if err != nil {
-			if !os.IsNotExist(err) && !errors.Is(err, io.EOF) {
+			if !os.IsNotExist(err) {
 				return nil, fmt.Errorf("read block data: %w", err)
 			}
 		} else {
