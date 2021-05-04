@@ -92,10 +92,11 @@ const (
 )
 
 type AccountMetadata struct {
-	Address   string    `bson:"address"`
-	Username  string    `bson:"username"`
-	IsBlocked bool      `bson:"isBlocked"`
-	BlockedAt time.Time `bson:"blockedAt"`
+	Address   string     `bson:"address"`
+	Username  string     `bson:"username"`
+	IsBlocked bool       `bson:"isBlocked"`
+	BlockedAt *time.Time `bson:"blockedAt,omitempty"`
+	CreatedAt time.Time  `bson:"createdAt"`
 }
 
 const (
