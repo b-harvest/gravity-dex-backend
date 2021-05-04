@@ -175,6 +175,7 @@ If there is no account with matching address, then `account` field will contain 
 	"amount": <int>,
 	"globalPrice": <float>
       },
+      "swapFeeValueSinceLastHour": <float>,
       "apy": <float>
     },
     ...
