@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -146,7 +147,7 @@ func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64) (
 		t.logger.Debug("waiting for the block data", zap.Int64("height", blockHeight))
 		data, err := t.ReadBlockData(blockHeight)
 		if err != nil {
-			if !os.IsNotExist(err) {
+			if !os.IsNotExist(err) && !errors.Is(err, io.EOF) {
 				return nil, fmt.Errorf("read block data: %w", err)
 			}
 		} else {

@@ -2,7 +2,9 @@ package transformer
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -65,7 +67,7 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 		} else {
 			data, err = t.ReadBlockData(blockHeight)
 			if err != nil {
-				if !os.IsNotExist(err) {
+				if !os.IsNotExist(err) && !errors.Is(err, io.EOF) {
 					return nil, nil, fmt.Errorf("read block data: %w", err)
 				}
 				break
