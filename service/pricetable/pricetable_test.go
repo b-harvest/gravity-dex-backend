@@ -27,7 +27,7 @@ func TestContext_Price(t *testing.T) {
 			"atom": 20.0,
 			"luna": 10.0,
 		},
-		pools: map[string]*schema.Pool{
+		pools: map[string]*schema.PoolStatus{
 			"pool1": {
 				ReserveCoins: []schema.Coin{
 					{Denom: "uatom", Amount: 1000000},

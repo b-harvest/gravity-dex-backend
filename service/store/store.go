@@ -23,24 +23,40 @@ func NewService(cfg config.MongoDBConfig, mc *mongo.Client) *Service {
 	return &Service{cfg, mc}
 }
 
+func (s *Service) Database() *mongo.Database {
+	return s.mc.Database(s.cfg.DB)
+}
+
 func (s *Service) CheckpointCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.DB).Collection(s.cfg.CheckpointCollection)
+	return s.Database().Collection(s.cfg.CheckpointCollection)
 }
 
 func (s *Service) AccountCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.DB).Collection(s.cfg.AccountCollection)
+	return s.Database().Collection(s.cfg.AccountCollection)
 }
 
-func (s *Service) AccountMetadataCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.DB).Collection(s.cfg.AccountMetadataCollection)
+func (s *Service) AccountStatusCollection() *mongo.Collection {
+	return s.Database().Collection(s.cfg.AccountStatusCollection)
 }
 
 func (s *Service) PoolCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.DB).Collection(s.cfg.PoolCollection)
+	return s.Database().Collection(s.cfg.PoolCollection)
+}
+
+func (s *Service) PoolStatusCollection() *mongo.Collection {
+	return s.Database().Collection(s.cfg.PoolStatusCollection)
+}
+
+func (s *Service) BalanceCollection() *mongo.Collection {
+	return s.Database().Collection(s.cfg.BalanceCollection)
+}
+
+func (s *Service) SupplyCollection() *mongo.Collection {
+	return s.Database().Collection(s.cfg.SupplyCollection)
 }
 
 func (s *Service) BannerCollection() *mongo.Collection {
-	return s.mc.Database(s.cfg.DB).Collection(s.cfg.BannerCollection)
+	return s.Database().Collection(s.cfg.BannerCollection)
 }
 
 func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
@@ -50,17 +66,23 @@ func (s *Service) EnsureDBIndexes(ctx context.Context) ([]string, error) {
 		is   []mongo.IndexModel
 	}{
 		{s.AccountCollection(), []mongo.IndexModel{
-			{Keys: bson.D{{schema.AccountBlockHeightKey, 1}}},
-			{Keys: bson.D{{schema.AccountBlockHeightKey, 1}, {schema.AccountAddressKey, 1}}},
+			{Keys: bson.D{{schema.AccountAddressKey, 1}}},
 		}},
-		{s.AccountMetadataCollection(), []mongo.IndexModel{
-			{Keys: bson.D{{schema.AccountMetadataAddressKey, 1}}},
+		{s.AccountStatusCollection(), []mongo.IndexModel{
+			{Keys: bson.D{{schema.AccountStatusAddressKey, 1}}},
+			{Keys: bson.D{{schema.AccountStatusBlockHeightKey, 1}}},
+			{Keys: bson.D{{schema.AccountStatusBlockHeightKey, 1}, {schema.AccountStatusAddressKey, 1}}},
 		}},
-		{s.PoolCollection(), []mongo.IndexModel{
-			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}}},
-			{Keys: bson.D{{schema.PoolBlockHeightKey, 1}, {schema.PoolIDKey, 1}}},
-			{Keys: bson.D{{schema.PoolReserveCoinsKey, 1}}},
-			{Keys: bson.D{{schema.PoolPoolCoinKey, 1}}},
+		{s.PoolStatusCollection(), []mongo.IndexModel{
+			{Keys: bson.D{{schema.PoolStatusIDKey, 1}}},
+			{Keys: bson.D{{schema.PoolStatusBlockHeightKey, 1}}},
+			{Keys: bson.D{{schema.PoolStatusBlockHeightKey, 1}, {schema.PoolStatusIDKey, 1}}},
+		}},
+		{s.BalanceCollection(), []mongo.IndexModel{
+			{Keys: bson.D{{schema.BalanceAddressKey, 1}}},
+		}},
+		{s.SupplyCollection(), []mongo.IndexModel{
+			{Keys: bson.D{{schema.SupplyDenomKey, 1}}},
 		}},
 		{s.BannerCollection(), []mongo.IndexModel{
 			{Keys: bson.D{{schema.BannerVisibleAtKey, 1}}},
@@ -90,32 +112,112 @@ func (s *Service) LatestBlockHeight(ctx context.Context) (int64, error) {
 	return cp.BlockHeight, nil
 }
 
+func (s *Service) SetLatestBlockHeight(ctx context.Context, height int64) error {
+	if _, err := s.CheckpointCollection().UpdateOne(ctx, bson.M{
+		schema.CheckpointBlockHeightKey: bson.M{"$exists": true},
+	}, bson.M{
+		"$set": bson.M{
+			schema.CheckpointBlockHeightKey: height,
+			schema.CheckpointTimestampKey:   time.Now(),
+		},
+	}, options.Update().SetUpsert(true)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) DeleteOutdatedAccountStatuses(ctx context.Context, currentBlockHeight int64) error {
+	if _, err := s.AccountStatusCollection().DeleteMany(ctx, bson.M{
+		"$or": bson.A{
+			bson.M{
+				schema.AccountStatusBlockHeightKey: bson.M{"$lt": currentBlockHeight - 1},
+			},
+			bson.M{
+				schema.AccountStatusBlockHeightKey: bson.M{"$gt": currentBlockHeight + 1},
+			},
+		},
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) DeleteOutdatedPoolStatuses(ctx context.Context, currentBlockHeight int64) error {
+	if _, err := s.PoolStatusCollection().DeleteMany(ctx, bson.M{
+		"$or": bson.A{
+			bson.M{
+				schema.PoolStatusBlockHeightKey: bson.M{"$lt": currentBlockHeight - 1},
+			},
+			bson.M{
+				schema.PoolStatusBlockHeightKey: bson.M{"$gt": currentBlockHeight + 1},
+			},
+		},
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) AccountStatus(ctx context.Context, blockHeight int64, address string) (schema.AccountStatus, error) {
+	var accStatus schema.AccountStatus
+	if err := s.AccountStatusCollection().FindOne(ctx, bson.M{
+		schema.AccountStatusBlockHeightKey: blockHeight,
+		schema.AccountStatusAddressKey:     address,
+	}).Decode(&accStatus); err != nil {
+		return schema.AccountStatus{}, err
+	}
+	return accStatus, nil
+}
+
+func (s *Service) PoolStatus(ctx context.Context, blockHeight int64, id uint64) (schema.PoolStatus, error) {
+	var poolStatus schema.PoolStatus
+	if err := s.PoolStatusCollection().FindOne(ctx, bson.M{
+		schema.PoolStatusBlockHeightKey: blockHeight,
+		schema.PoolStatusIDKey:          id,
+	}).Decode(&poolStatus); err != nil {
+		return schema.PoolStatus{}, err
+	}
+	return poolStatus, nil
+}
+
 func (s *Service) IterateAccounts(ctx context.Context, blockHeight int64, cb func(schema.Account) (stop bool, err error)) error {
 	cur, err := s.AccountCollection().Aggregate(ctx, bson.A{
 		bson.M{
 			"$match": bson.M{
-				schema.AccountBlockHeightKey: blockHeight,
-			},
-		},
-		bson.M{
-			"$lookup": bson.M{
-				"from":         s.cfg.AccountMetadataCollection,
-				"foreignField": schema.AccountMetadataAddressKey,
-				"localField":   schema.AccountAddressKey,
-				"as":           schema.AccountMetadataKey,
-			},
-		},
-		bson.M{
-			"$set": bson.M{
-				schema.AccountMetadataKey: bson.M{
-					"$arrayElemAt": bson.A{"$" + schema.AccountMetadataKey, 0},
+				schema.AccountIsBlockedKey: bson.M{
+					"$in": bson.A{false, nil},
 				},
 			},
 		},
 		bson.M{
+			"$lookup": bson.M{
+				"from":         s.cfg.BalanceCollection,
+				"localField":   schema.AccountAddressKey,
+				"foreignField": schema.BalanceAddressKey,
+				"as":           schema.AccountBalanceKey,
+			},
+		},
+		bson.M{
+			"$unwind": "$" + schema.AccountBalanceKey,
+		},
+		bson.M{
+			"$lookup": bson.M{
+				"from":         s.cfg.AccountStatusCollection,
+				"localField":   schema.AccountAddressKey,
+				"foreignField": schema.AccountStatusAddressKey,
+				"as":           schema.AccountStatusKey,
+			},
+		},
+		bson.M{
+			"$unwind": bson.M{
+				"path":                       "$" + schema.AccountStatusKey,
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		bson.M{
 			"$match": bson.M{
-				schema.AccountMetadataKey + "." + schema.AccountMetadataIsBlockedKey: bson.M{
-					"$in": bson.A{false, nil},
+				schema.AccountStatusKey + "." + schema.AccountStatusBlockHeightKey: bson.M{
+					"$in": bson.A{blockHeight, nil},
 				},
 			},
 		},
@@ -141,13 +243,53 @@ func (s *Service) IterateAccounts(ctx context.Context, blockHeight int64, cb fun
 }
 
 func (s *Service) Pools(ctx context.Context, blockHeight int64) ([]schema.Pool, error) {
-	cur, err := s.PoolCollection().Find(ctx, bson.M{
-		schema.PoolBlockHeightKey:  blockHeight,
-		schema.PoolReserveCoinsKey: bson.M{"$ne": nil},
-		schema.PoolPoolCoinKey:     bson.M{"$ne": nil},
+	cur, err := s.PoolCollection().Aggregate(ctx, bson.A{
+		bson.M{
+			"$lookup": bson.M{
+				"from":         s.cfg.BalanceCollection,
+				"localField":   schema.PoolReserveAccountAddressKey,
+				"foreignField": schema.BalanceAddressKey,
+				"as":           schema.PoolReserveAccountBalanceKey,
+			},
+		},
+		bson.M{
+			"$unwind": "$" + schema.PoolReserveAccountBalanceKey,
+		},
+		bson.M{
+			"$lookup": bson.M{
+				"from":         s.cfg.SupplyCollection,
+				"localField":   schema.PoolPoolCoinDenomKey,
+				"foreignField": schema.SupplyDenomKey,
+				"as":           schema.PoolPoolCoinSupplyKey,
+			},
+		},
+		bson.M{
+			"$unwind": "$" + schema.PoolPoolCoinSupplyKey,
+		},
+		bson.M{
+			"$lookup": bson.M{
+				"from":         s.cfg.PoolStatusCollection,
+				"localField":   schema.PoolIDKey,
+				"foreignField": schema.PoolStatusIDKey,
+				"as":           schema.PoolStatusKey,
+			},
+		},
+		bson.M{
+			"$unwind": bson.M{
+				"path":                       "$" + schema.PoolStatusKey,
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		bson.M{
+			"$match": bson.M{
+				schema.PoolStatusKey + "." + schema.PoolStatusBlockHeightKey: bson.M{
+					"$in": bson.A{blockHeight, nil},
+				},
+			},
+		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("find pools: %w", err)
+		return nil, fmt.Errorf("aggregate pools: %w", err)
 	}
 	defer cur.Close(ctx)
 	var ps []schema.Pool

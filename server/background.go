@@ -4,26 +4,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-
-	"github.com/b-harvest/gravity-dex-backend/util"
 )
 
 func (s *Server) RunBackgroundUpdater(ctx context.Context) error {
-	ticker := util.NewImmediateTicker(s.cfg.CacheUpdateInterval)
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-ticker.C:
-			s.logger.Debug("updating caches")
-			if err := s.UpdateCaches(ctx); err != nil {
-				if !errors.Is(err, context.Canceled) {
-					s.logger.Error("failed to update caches", zap.Error(err))
-				}
+		default:
+		}
+		s.logger.Debug("updating caches")
+		if err := s.UpdateCaches(ctx); err != nil {
+			if !errors.Is(err, context.Canceled) {
+				s.logger.Error("failed to update caches", zap.Error(err))
 			}
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(s.cfg.CacheUpdateInterval):
 		}
 	}
 }

@@ -37,14 +37,14 @@ func main() {
 		if len(row) == 2 {
 			addr, username := row[0], row[1]
 			writes = append(writes, mongo.NewUpdateOneModel().SetFilter(bson.M{
-				schema.AccountMetadataAddressKey: addr,
+				schema.AccountAddressKey: addr,
 			}).SetUpdate(bson.M{
 				"$set": bson.M{
-					schema.AccountMetadataUsernameKey:  username,
-					schema.AccountMetadataCreatedAtKey: now,
+					schema.AccountUsernameKey:  username,
+					schema.AccountCreatedAtKey: now,
 				},
 				"$setOnInsert": bson.M{
-					schema.AccountMetadataIsBlockedKey: false,
+					schema.AccountIsBlockedKey: false,
 				},
 			}).SetUpsert(true))
 		}
@@ -56,7 +56,7 @@ func main() {
 	}
 	defer mc.Disconnect(context.Background())
 
-	coll := mc.Database("gdex").Collection("accountMetadata")
+	coll := mc.Database("gdex").Collection("accounts")
 	log.Printf("importing %d account metadata", len(writes))
 	if _, err := coll.BulkWrite(context.Background(), writes); err != nil {
 		log.Fatalf("failed to insert account metadata: %v", err)

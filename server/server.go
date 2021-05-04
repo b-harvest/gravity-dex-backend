@@ -53,7 +53,7 @@ func (s *Server) tradingScore(acc schema.Account, priceTable price.Table) (float
 		denoms[d] = struct{}{}
 	}
 	v := 0.0 // total usd value of the user's balances
-	for _, c := range acc.Coins {
+	for _, c := range acc.Coins() {
 		if _, ok := denoms[c.Denom]; !ok {
 			continue
 		}
@@ -67,12 +67,14 @@ func (s *Server) tradingScore(acc schema.Account, priceTable price.Table) (float
 }
 
 func (s *Server) actionScore(acc schema.Account) (score float64, valid bool) {
+	ds := acc.DepositStatus().NumDifferentPoolsByDate()
+	ss := acc.SwapStatus().NumDifferentPoolsByDate()
 	for _, k := range s.cfg.TradingDates {
-		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, len(acc.DepositStatus.CountByPoolIDByDate[k])))
-		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, len(acc.SwapStatus.CountByPoolIDByDate[k])))
+		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, ds[k]))
+		score += float64(util.MinInt(s.cfg.MaxActionScorePerDay, ss[k]))
 	}
 	score /= float64((2 * s.cfg.MaxActionScorePerDay) * len(s.cfg.TradingDates))
 	score *= 100
-	valid = len(acc.DepositStatus.CountByPoolID) >= 3 && len(acc.SwapStatus.CountByPoolID) >= 3
+	valid = acc.DepositStatus().NumDifferentPools() >= 3 && acc.SwapStatus().NumDifferentPools() >= 3
 	return
 }

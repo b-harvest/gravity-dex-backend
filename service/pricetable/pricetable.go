@@ -35,7 +35,7 @@ func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (price.Ta
 	poolByPoolCoinDenom := make(map[string]*schema.Pool)
 	for _, p := range pools {
 		p := p
-		poolByPoolCoinDenom[p.PoolCoin.Denom] = &p
+		poolByPoolCoinDenom[p.PoolCoinDenom] = &p
 	}
 	c := &Context{
 		s.cfg.CoinDenoms,
@@ -91,19 +91,19 @@ func (c *Context) Price(denom string) (float64, error) {
 			p = mp.MinPrice + rand.Float64()*(mp.MaxPrice-mp.MinPrice)
 		case c.IsPoolCoinDenom(denom):
 			pool := c.pools[denom]
-			if pool.PoolCoin.Amount == 0 { // pool is inactive
+			if pool.PoolCoinAmount() == 0 { // pool is inactive
 				p = 0
 				break
 			}
 			sum := 0.0
-			for _, rc := range pool.ReserveCoins {
+			for _, rc := range pool.ReserveCoins() {
 				tp, err := c.Price(rc.Denom)
 				if err != nil {
 					return 0, err
 				}
 				sum += tp * float64(rc.Amount)
 			}
-			p = 1 / float64(pool.PoolCoin.Amount) * sum
+			p = 1 / float64(pool.PoolCoinAmount()) * sum
 		default:
 			md, ok := c.denomMetadata[denom]
 			if !ok {

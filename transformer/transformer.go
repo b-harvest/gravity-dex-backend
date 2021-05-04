@@ -6,112 +6,67 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
-	"github.com/b-harvest/gravity-dex-backend/util"
+	"github.com/b-harvest/gravity-dex-backend/service/store"
 )
 
 var jsonit = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Transformer struct {
 	cfg    config.TransformerConfig
-	mc     *mongo.Client
+	ss     *store.Service
 	logger *zap.Logger
 }
 
-func New(cfg config.TransformerConfig, mc *mongo.Client, logger *zap.Logger) (*Transformer, error) {
-	return &Transformer{cfg, mc, logger}, nil
-}
-
-func (t *Transformer) CheckpointCollection() *mongo.Collection {
-	return t.mc.Database(t.cfg.MongoDB.DB).Collection(t.cfg.MongoDB.CheckpointCollection)
-}
-
-func (t *Transformer) AccountCollection() *mongo.Collection {
-	return t.mc.Database(t.cfg.MongoDB.DB).Collection(t.cfg.MongoDB.AccountCollection)
-}
-
-func (t *Transformer) PoolCollection() *mongo.Collection {
-	return t.mc.Database(t.cfg.MongoDB.DB).Collection(t.cfg.MongoDB.PoolCollection)
+func New(cfg config.TransformerConfig, ss *store.Service, logger *zap.Logger) (*Transformer, error) {
+	return &Transformer{cfg: cfg, ss: ss, logger: logger}, nil
 }
 
 func (t *Transformer) Run(ctx context.Context) error {
 	for {
 		t.logger.Debug("getting latest block height")
-		h, err := t.LatestBlockHeight(ctx)
+		h, err := t.ss.LatestBlockHeight(ctx)
 		if err != nil {
 			return fmt.Errorf("get latest block height: %w", err)
 		}
 		t.logger.Debug("got latest block height", zap.Int64("height", h))
 		if h > 1 {
-			t.logger.Debug("pruning old state", zap.Int64("height", h))
-			if err := t.PruneOldState(ctx, h+int64(t.cfg.PruningOffset)); err != nil {
+			t.logger.Debug("pruning outdated states", zap.Int64("height", h))
+			if err := t.PruneOutdatedStates(ctx, h); err != nil {
 				return fmt.Errorf("prune old state: %w", err)
 			}
 		}
-		updates, data, err := t.AccStateUpdates(ctx, h+1)
+		updates, err := t.AccStateUpdates(ctx, h+1)
 		if err != nil {
 			return fmt.Errorf("accumulate state updates: %w", err)
 		}
-		lastH := data.Header.Height
+		lastH := updates.lastBlockData.Header.Height
 		t.logger.Info("updating state", zap.Int64("from", h+1), zap.Int64("to", lastH))
-		if err := t.UpdateState(ctx, h, lastH, updates, data); err != nil {
+		if err := t.UpdateState(ctx, h, updates); err != nil {
 			return fmt.Errorf("update state: %w", err)
 		}
 		t.logger.Debug("updating latest block height", zap.Int64("height", lastH))
-		if err := t.UpdateLatestBlockHeight(ctx, lastH); err != nil {
+		if err := t.ss.SetLatestBlockHeight(ctx, lastH); err != nil {
 			return fmt.Errorf("update latest block height: %w", err)
 		}
 	}
 }
 
-func (t *Transformer) LatestBlockHeight(ctx context.Context) (int64, error) {
-	var cp schema.Checkpoint
-	if err := t.CheckpointCollection().FindOne(ctx, bson.M{
-		schema.CheckpointBlockHeightKey: bson.M{"$exists": true},
-	}).Decode(&cp); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return 0, nil
-		}
-		return 0, err
+func (t *Transformer) PruneOutdatedStates(ctx context.Context, currentBlockHeight int64) error {
+	if err := t.ss.DeleteOutdatedAccountStatuses(ctx, currentBlockHeight); err != nil {
+		return fmt.Errorf("delete outdated accounts: %w", err)
 	}
-	return cp.BlockHeight, nil
-}
-
-func (t *Transformer) UpdateLatestBlockHeight(ctx context.Context, height int64) error {
-	if _, err := t.CheckpointCollection().UpdateOne(ctx, bson.M{
-		schema.CheckpointBlockHeightKey: bson.M{"$exists": true},
-	}, bson.M{
-		"$set": bson.M{
-			schema.CheckpointBlockHeightKey: height,
-			schema.CheckpointTimestampKey:   time.Now(),
-		},
-	}, options.Update().SetUpsert(true)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *Transformer) PruneOldState(ctx context.Context, currentBlockHeight int64) error {
-	if _, err := t.AccountCollection().DeleteMany(ctx, bson.M{
-		schema.AccountBlockHeightKey: bson.M{"$lt": currentBlockHeight},
-	}); err != nil {
-		return fmt.Errorf("prune account collection: %w", err)
-	}
-	if _, err := t.PoolCollection().DeleteMany(ctx, bson.M{
-		schema.PoolBlockHeightKey: bson.M{"$lt": currentBlockHeight},
-	}); err != nil {
-		return fmt.Errorf("prune pool collection: %w", err)
+	if err := t.ss.DeleteOutdatedPoolStatuses(ctx, currentBlockHeight); err != nil {
+		return fmt.Errorf("delete outdated pools: %w", err)
 	}
 	return nil
 }
@@ -135,13 +90,17 @@ func (t *Transformer) ReadBlockData(blockHeight int64) (*BlockData, error) {
 	return &data, nil
 }
 
-func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64) (*BlockData, error) {
-	ticker := util.NewImmediateTicker(t.cfg.BlockDataWaitingInterval)
+func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64, timeout time.Duration) (*BlockData, error) {
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-ticker.C:
+		default:
 		}
 		t.logger.Debug("waiting for the block data", zap.Int64("height", blockHeight))
 		data, err := t.ReadBlockData(blockHeight)
@@ -152,28 +111,42 @@ func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64) (
 		} else {
 			return data, nil
 		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(t.cfg.BlockDataWaitingInterval):
+		}
 	}
 }
 
-func (t *Transformer) UpdateState(ctx context.Context, currentBlockHeight, lastBlockHeight int64, updates *StateUpdates, data *BlockData) error {
-	balancesByAddr := data.BalancesByAddress()
+func (t *Transformer) UpdateState(ctx context.Context, currentBlockHeight int64, updates *StateUpdates) error {
 	eg, ctx2 := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		if err := t.UpdateAccounts(ctx2, currentBlockHeight, lastBlockHeight, updates, data, balancesByAddr); err != nil {
+		if err := t.UpdateAccountStatus(ctx2, currentBlockHeight, updates); err != nil {
 			return fmt.Errorf("update accounts: %w", err)
 		}
 		return nil
 	})
 	eg.Go(func() error {
-		if err := t.UpdatePools(ctx2, currentBlockHeight, lastBlockHeight, updates, data, balancesByAddr); err != nil {
+		if err := t.UpdatePoolStatus(ctx2, currentBlockHeight, updates); err != nil {
 			return fmt.Errorf("update pools: %w", err)
 		}
 		return nil
 	})
+	if updates.lastBankModuleState != nil {
+		eg.Go(func() error {
+			if err := t.UpdateBalancesAndSupplies(ctx2, updates); err != nil {
+				return fmt.Errorf("update balances and supplies: %w", err)
+			}
+			return nil
+		})
+	}
 	return eg.Wait()
 }
 
-func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, lastBlockHeight int64, updates *StateUpdates, data *BlockData, balancesByAddr map[string][]schema.Coin) error {
+func (t *Transformer) UpdateAccountStatus(ctx context.Context, currentBlockHeight int64, updates *StateUpdates) error {
+	data := updates.lastBlockData
+	lastBlockHeight := data.Header.Height
 	reserveAccAddrs := make(map[string]struct{})
 	for _, p := range data.Pools {
 		reserveAccAddrs[p.ReserveAccountAddress] = struct{}{}
@@ -190,133 +163,161 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 		if _, ok := reserveAccAddrs[addr]; ok {
 			continue
 		}
-		var acc schema.Account
+		var accStatus schema.AccountStatus
 		if currentBlockHeight > 0 {
-			if err := t.AccountCollection().FindOne(ctx, bson.M{
-				schema.AccountBlockHeightKey: currentBlockHeight,
-				schema.AccountAddressKey:     addr,
-			}).Decode(&acc); err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-				return fmt.Errorf("find account: %w", err)
+			var err error
+			accStatus, err = t.ss.AccountStatus(ctx, currentBlockHeight, addr)
+			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+				return fmt.Errorf("find account status: %w", err)
 			}
 		}
-		acc.DepositStatus = schema.MergeAccountActionStatuses(acc.DepositStatus, updates.depositStatusByAddress[addr])
-		acc.SwapStatus = schema.MergeAccountActionStatuses(acc.SwapStatus, updates.swapStatusByAddress[addr])
-		set := bson.M{
-			schema.AccountCoinsKey:         acc.Coins,
-			schema.AccountDepositStatusKey: acc.DepositStatus,
-			schema.AccountSwapStatusKey:    acc.SwapStatus,
-		}
-		b, ok := balancesByAddr[addr]
-		if ok {
-			set[schema.AccountCoinsKey] = b
-		}
+		accStatus.Deposits = schema.MergeAccountActionStatuses(accStatus.Deposits, updates.depositStatusByAddress[addr])
+		accStatus.Swaps = schema.MergeAccountActionStatuses(accStatus.Swaps, updates.swapStatusByAddress[addr])
 		writes = append(writes,
 			mongo.NewUpdateOneModel().
 				SetFilter(bson.M{
-					schema.AccountBlockHeightKey: lastBlockHeight,
-					schema.AccountAddressKey:     addr,
+					schema.AccountStatusBlockHeightKey: lastBlockHeight,
+					schema.AccountStatusAddressKey:     addr,
 				}).
-				SetUpdate(bson.M{"$set": set}).
+				SetUpdate(bson.M{"$set": bson.M{
+					schema.AccountStatusDepositsKey: accStatus.Deposits,
+					schema.AccountStatusSwapsKey:    accStatus.Swaps,
+				}}).
 				SetUpsert(true))
 	}
 	if len(writes) > 0 {
-		if _, err := t.AccountCollection().BulkWrite(ctx, writes); err != nil {
+		if _, err := t.ss.AccountStatusCollection().BulkWrite(ctx, writes); err != nil {
 			return fmt.Errorf("bulk write: %w", err)
 		}
 	}
-	cur, err := t.AccountCollection().Find(ctx, bson.M{schema.AccountBlockHeightKey: currentBlockHeight})
+	cur, err := t.ss.AccountStatusCollection().Find(ctx, bson.M{
+		schema.AccountStatusBlockHeightKey: currentBlockHeight,
+	})
 	if err != nil {
-		return fmt.Errorf("find accounts: %w", err)
+		return fmt.Errorf("find account statuses: %w", err)
 	}
 	defer cur.Close(ctx)
 	writes = nil
 	for cur.Next(ctx) {
-		var acc schema.Account
-		if err := cur.Decode(&acc); err != nil {
-			return fmt.Errorf("decode account: %w", err)
+		var accStatus schema.AccountStatus
+		if err := cur.Decode(&accStatus); err != nil {
+			return fmt.Errorf("decode account status: %w", err)
 		}
-		if _, ok := addrsToUpdate[acc.Address]; ok {
+		if _, ok := addrsToUpdate[accStatus.Address]; ok {
 			continue
 		}
-		set := bson.M{
-			schema.AccountCoinsKey:         acc.Coins,
-			schema.AccountDepositStatusKey: acc.DepositStatus,
-			schema.AccountSwapStatusKey:    acc.SwapStatus,
-		}
-		b, ok := balancesByAddr[acc.Address]
-		if ok {
-			set[schema.AccountCoinsKey] = b
-		}
-		writes = append(writes,
-			mongo.NewUpdateOneModel().
-				SetFilter(bson.M{
-					schema.AccountBlockHeightKey: lastBlockHeight,
-					schema.AccountAddressKey:     acc.Address,
-				}).
-				SetUpdate(bson.M{"$set": set}).
-				SetUpsert(true))
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{
+				schema.AccountStatusBlockHeightKey: lastBlockHeight,
+				schema.AccountStatusAddressKey:     accStatus.Address,
+			}).
+			SetUpdate(bson.M{"$set": bson.M{
+				schema.AccountStatusDepositsKey: accStatus.Deposits,
+				schema.AccountStatusSwapsKey:    accStatus.Swaps,
+			}}).
+			SetUpsert(true))
 	}
 	if len(writes) > 0 {
-		if _, err := t.AccountCollection().BulkWrite(ctx, writes); err != nil {
+		if _, err := t.ss.AccountStatusCollection().BulkWrite(ctx, writes); err != nil {
 			return fmt.Errorf("bulk write: %w", err)
 		}
 	}
 	return nil
 }
 
-func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight, lastBlockHeight int64, updates *StateUpdates, data *BlockData, balancesByAddr map[string][]schema.Coin) error {
-	var writes []mongo.WriteModel
+func (t *Transformer) UpdatePoolStatus(ctx context.Context, currentBlockHeight int64, updates *StateUpdates) error {
+	data := updates.lastBlockData
+	lastBlockHeight := data.Header.Height
+	var writes, writes2 []mongo.WriteModel
 	for _, p := range data.Pools {
-		var pool schema.Pool
+		var poolStatus schema.PoolStatus
 		if currentBlockHeight > 0 {
-			if err := t.PoolCollection().FindOne(ctx, bson.M{
-				schema.PoolBlockHeightKey: currentBlockHeight,
-				schema.PoolIDKey:          p.Id,
-			}).Decode(&pool); err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			var err error
+			poolStatus, err = t.ss.PoolStatus(ctx, currentBlockHeight, p.Id)
+			if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 				return fmt.Errorf("find pool: %w", err)
 			}
 		}
-		pool.SwapFeeVolumes = schema.MergeVolumes(pool.SwapFeeVolumes, updates.swapVolumesByPoolID[p.Id])
-		pool.SwapFeeVolumes.RemoveOutdated(data.Header.Time.Add(-time.Hour))
-		set := bson.M{
-			schema.PoolPoolCoinKey:       pool.PoolCoin,
-			schema.PoolReserveCoinsKey:   pool.ReserveCoins,
-			schema.PoolSwapFeeVolumesKey: pool.SwapFeeVolumes,
-		}
-		b, ok := balancesByAddr[p.ReserveAccountAddress]
-		if ok {
-			var reserveCoins []schema.Coin
-			for _, d := range p.ReserveCoinDenoms {
-				var amount int64
-				for _, c := range b {
-					if c.Denom == d {
-						amount = c.Amount
-						break
-					}
-				}
-				reserveCoins = append(reserveCoins, schema.Coin{Denom: d, Amount: amount})
-			}
-			// this is not necessary if it assumed that reserve coin denoms in data are already sorted.
-			sort.Slice(reserveCoins, func(i, j int) bool { return reserveCoins[i].Denom < reserveCoins[j].Denom })
-			if data.BankModuleState != nil { // actually this check is not needed, but it exists for safety reason.
-				set[schema.PoolPoolCoinKey] = schema.Coin{
-					Denom:  p.PoolCoinDenom,
-					Amount: data.BankModuleState.Supply.AmountOf(p.PoolCoinDenom).Int64(),
-				}
-			}
-			set[schema.PoolReserveCoinsKey] = reserveCoins
-		}
-		writes = append(writes,
-			mongo.NewUpdateOneModel().
-				SetFilter(bson.M{
-					schema.PoolBlockHeightKey: lastBlockHeight,
-					schema.PoolIDKey:          p.Id,
-				}).
-				SetUpdate(bson.M{"$set": set}).
-				SetUpsert(true))
+		poolStatus.SwapFeeVolumes = schema.MergeVolumes(poolStatus.SwapFeeVolumes, updates.swapVolumesByPoolID[p.Id])
+		poolStatus.SwapFeeVolumes.RemoveOutdated(data.Header.Time.Add(-time.Hour))
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{
+				schema.PoolStatusBlockHeightKey: lastBlockHeight,
+				schema.PoolStatusIDKey:          p.Id,
+			}).
+			SetUpdate(bson.M{
+				"$set": bson.M{
+					schema.PoolStatusSwapFeeVolumesKey: poolStatus.SwapFeeVolumes,
+				},
+			}).
+			SetUpsert(true))
+		writes2 = append(writes2, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{
+				schema.PoolIDKey: p.Id,
+			}).
+			SetUpdate(bson.M{
+				"$set": bson.M{
+					schema.PoolReserveAccountAddressKey: p.ReserveAccountAddress,
+					schema.PoolReserveCoinDenomsKey:     p.ReserveCoinDenoms,
+					schema.PoolPoolCoinDenomKey:         p.PoolCoinDenom,
+				},
+			}).
+			SetUpsert(true))
 	}
 	if len(writes) > 0 {
-		if _, err := t.PoolCollection().BulkWrite(ctx, writes); err != nil {
+		if _, err := t.ss.PoolStatusCollection().BulkWrite(ctx, writes); err != nil {
+			return fmt.Errorf("bulk write: %w", err)
+		}
+	}
+	if len(writes2) > 0 {
+		if _, err := t.ss.PoolCollection().BulkWrite(ctx, writes2); err != nil {
+			return fmt.Errorf("bulk write: %w", err)
+		}
+	}
+	return nil
+}
+
+func (t *Transformer) UpdateBalancesAndSupplies(ctx context.Context, updates *StateUpdates) error {
+	bankModuleState := updates.lastBankModuleState
+	if bankModuleState == nil {
+		return nil
+	}
+	lastBankModuleStateHeight := updates.lastBankModuleStateHeight
+	var writes []mongo.WriteModel
+	for _, b := range bankModuleState.Balances {
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{
+				schema.BalanceAddressKey: b.Address,
+			}).
+			SetUpdate(bson.M{
+				"$set": bson.M{
+					schema.BalanceBlockHeightKey: lastBankModuleStateHeight,
+					schema.BalanceCoinsKey:       schema.CoinsFromSDK(b.Coins),
+				},
+			}).
+			SetUpsert(true))
+	}
+	if len(writes) > 0 {
+		if _, err := t.ss.BalanceCollection().BulkWrite(ctx, writes); err != nil {
+			return fmt.Errorf("bulk write: %w", err)
+		}
+	}
+	writes = nil
+	for _, c := range bankModuleState.Supply {
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{
+				schema.SupplyDenomKey: c.Denom,
+			}).
+			SetUpdate(bson.M{
+				"$set": bson.M{
+					schema.SupplyBlockHeightKey: lastBankModuleStateHeight,
+					schema.SupplyAmountKey:      c.Amount.Int64(),
+				},
+			}).
+			SetUpsert(true))
+	}
+	if len(writes) > 0 {
+		if _, err := t.ss.SupplyCollection().BulkWrite(ctx, writes); err != nil {
 			return fmt.Errorf("bulk write: %w", err)
 		}
 	}

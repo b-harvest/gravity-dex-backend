@@ -91,7 +91,10 @@ func ServerCmd() *cobra.Command {
 				return nil
 			})
 			eg.Go(func() error {
-				return s.RunBackgroundUpdater(ctx2)
+				if err := s.RunBackgroundUpdater(ctx2); err != nil {
+					return fmt.Errorf("run background updater: %w", err)
+				}
+				return nil
 			})
 
 			quit := make(chan os.Signal, 1)

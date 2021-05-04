@@ -47,17 +47,17 @@ func TransformerCmd() *cobra.Command {
 				return fmt.Errorf("ping mongodb: %w", err)
 			}
 
-			t, err := transformer.New(cfg.Transformer, mc, logger)
-			if err != nil {
-				return fmt.Errorf("new transformer: %w", err)
-			}
-
 			ss := store.NewService(cfg.Transformer.MongoDB, mc)
 			names, err := ss.EnsureDBIndexes(context.Background())
 			if err != nil {
 				return fmt.Errorf("ensure db indexes: %w", err)
 			}
 			logger.Info("created db indexes", zap.Strings("names", names))
+
+			t, err := transformer.New(cfg.Transformer, ss, logger)
+			if err != nil {
+				return fmt.Errorf("new transformer: %w", err)
+			}
 
 			logger.Info("started")
 
@@ -67,7 +67,7 @@ func TransformerCmd() *cobra.Command {
 			done := make(chan error)
 			go func() {
 				err := t.Run(ctx)
-				if err != nil {
+				if err != nil && !errors.Is(err, context.Canceled) {
 					logger.Error("failed to run transformer", zap.Error(err))
 				}
 				done <- err

@@ -23,11 +23,7 @@ func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, pri
 		Accounts:    []schema.AccountsCacheAccount{},
 	}
 	if err := s.ss.IterateAccounts(ctx, blockHeight, func(acc schema.Account) (stop bool, err error) {
-		var username string
-		if acc.Metadata != nil {
-			username = acc.Metadata.Username
-		}
-		if username == "" {
+		if acc.Username == "" {
 			return false, nil
 		}
 		ts, err := s.tradingScore(acc, priceTable)
@@ -37,18 +33,18 @@ func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, pri
 		as, valid := s.actionScore(acc)
 		cache.Accounts = append(cache.Accounts, schema.AccountsCacheAccount{
 			Address:      acc.Address,
-			Username:     username,
+			Username:     acc.Username,
 			TotalScore:   ts*s.cfg.TradingScoreRatio + as*(1-s.cfg.TradingScoreRatio),
 			TradingScore: ts,
 			ActionScore:  as,
 			IsValid:      valid,
 			DepositStatus: schema.AccountCacheActionStatus{
-				NumDifferentPools:       acc.DepositStatus.NumDifferentPools(),
-				NumDifferentPoolsByDate: acc.DepositStatus.NumDifferentPoolsByDate(),
+				NumDifferentPools:       acc.DepositStatus().NumDifferentPools(),
+				NumDifferentPoolsByDate: acc.DepositStatus().NumDifferentPoolsByDate(),
 			},
 			SwapStatus: schema.AccountCacheActionStatus{
-				NumDifferentPools:       acc.SwapStatus.NumDifferentPools(),
-				NumDifferentPoolsByDate: acc.SwapStatus.NumDifferentPoolsByDate(),
+				NumDifferentPools:       acc.SwapStatus().NumDifferentPools(),
+				NumDifferentPoolsByDate: acc.SwapStatus().NumDifferentPoolsByDate(),
 			},
 		})
 		return false, nil
@@ -80,27 +76,30 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 		Pools:       []schema.PoolsCachePool{},
 	}
 	for _, p := range pools {
+		if p.PoolCoinAmount() == 0 {
+			continue
+		}
 		var reserveCoins []schema.PoolsCacheCoin
-		for _, rc := range p.ReserveCoins {
+		for _, rc := range p.ReserveCoins() {
 			reserveCoins = append(reserveCoins, schema.PoolsCacheCoin{
 				Denom:       rc.Denom,
 				Amount:      rc.Amount,
 				GlobalPrice: priceTable[rc.Denom],
 			})
 		}
-		cs := p.SwapFeeVolumes.TotalCoins()
+		cs := p.SwapFeeVolumes().TotalCoins()
 		feeValue := 0.0
 		for denom, amount := range cs {
 			feeValue += float64(amount) * priceTable[denom]
 		}
-		poolValue := priceTable[p.PoolCoin.Denom] * float64(p.PoolCoin.Amount)
+		poolValue := priceTable[p.PoolCoinDenom] * float64(p.PoolCoinAmount())
 		cache.Pools = append(cache.Pools, schema.PoolsCachePool{
 			ID:           p.ID,
 			ReserveCoins: reserveCoins,
 			PoolCoin: schema.PoolsCacheCoin{
-				Denom:       p.PoolCoin.Denom,
-				Amount:      p.PoolCoin.Amount,
-				GlobalPrice: priceTable[p.PoolCoin.Denom],
+				Denom:       p.PoolCoinDenom,
+				Amount:      p.PoolCoinAmount(),
+				GlobalPrice: priceTable[p.PoolCoinDenom],
 			},
 			SwapFeeValueSinceLastHour: feeValue,
 			APY:                       feeValue / poolValue * 24 * 365,

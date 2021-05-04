@@ -11,7 +11,6 @@ var DefaultTransformerConfig = TransformerConfig{
 	BlockDataFilename:        "%08d/%d.json",
 	BlockDataBucketSize:      10000,
 	BlockDataWaitingInterval: time.Second,
-	PruningOffset:            -2,
 	MongoDB:                  DefaultMongoDBConfig,
 	Log:                      zap.NewProductionConfig(),
 }
@@ -21,7 +20,6 @@ type TransformerConfig struct {
 	BlockDataFilename        string        `yaml:"block_data_filename"`
 	BlockDataBucketSize      int           `yaml:"block_data_bucket_size"`
 	BlockDataWaitingInterval time.Duration `yaml:"block_data_waiting_interval"`
-	PruningOffset            int           `yaml:"pruning_offset"`
 	IgnoredAddresses         []string      `yaml:"ignored_addresses"`
 	MongoDB                  MongoDBConfig `yaml:"mongodb"`
 	Log                      zap.Config    `yaml:"log"`

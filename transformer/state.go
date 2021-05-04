@@ -2,10 +2,12 @@ package transformer
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	liquiditytypes "github.com/tendermint/liquidity/x/liquidity/types"
 	"go.uber.org/zap"
 
@@ -13,9 +15,12 @@ import (
 )
 
 type StateUpdates struct {
-	depositStatusByAddress ActionStatusByAddress
-	swapStatusByAddress    ActionStatusByAddress
-	swapVolumesByPoolID    VolumesByPoolID
+	lastBlockData             *BlockData
+	lastBankModuleStateHeight int64
+	lastBankModuleState       *banktypes.GenesisState
+	depositStatusByAddress    ActionStatusByAddress
+	swapStatusByAddress       ActionStatusByAddress
+	swapVolumesByPoolID       VolumesByPoolID
 }
 
 type ActionStatusByAddress map[string]schema.AccountActionStatus
@@ -40,7 +45,7 @@ func (m VolumesByPoolID) Volumes(poolID uint64) schema.Volumes {
 	return v
 }
 
-func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight int64) (*StateUpdates, *BlockData, error) {
+func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight int64) (*StateUpdates, error) {
 	blockHeight := startingBlockHeight
 	updates := &StateUpdates{
 		depositStatusByAddress: make(ActionStatusByAddress),
@@ -48,32 +53,39 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 		swapVolumesByPoolID:    make(VolumesByPoolID),
 	}
 	ignoredAddresses := t.cfg.IgnoredAddressesSet()
-	var lastData *BlockData
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, nil, ctx.Err()
+			return nil, ctx.Err()
 		default:
 		}
 		var data *BlockData
 		var err error
 		if blockHeight == startingBlockHeight {
-			data, err = t.WaitForBlockData(ctx, blockHeight)
+			data, err = t.WaitForBlockData(ctx, blockHeight, 0)
 			if err != nil {
-				return nil, nil, fmt.Errorf("wait for block data: %w", err)
+				return nil, fmt.Errorf("wait for block data: %w", err)
 			}
 		} else {
-			data, err = t.ReadBlockData(blockHeight)
+			data, err = t.WaitForBlockData(ctx, blockHeight, t.cfg.BlockDataWaitingInterval+time.Second)
 			if err != nil {
-				if !os.IsNotExist(err) {
-					return nil, nil, fmt.Errorf("read block data: %w", err)
+				if !errors.Is(err, context.DeadlineExceeded) {
+					return nil, fmt.Errorf("wait for block data: %w", err)
 				}
 				break
 			}
 		}
-		lastData = data
+		if data.Header.Height != blockHeight {
+			return nil, fmt.Errorf("mismatching block height: expected %d, got %d", blockHeight, data.Header.Height)
+		}
+		updates.lastBlockData = data
+		if data.BankModuleState != nil {
+			updates.lastBankModuleState = data.BankModuleState
+			updates.lastBankModuleStateHeight = blockHeight
+		}
 		tm := data.Header.Time.UTC()
 		dateKey := tm.Format("2006-01-02")
+		poolByID := data.PoolByID()
 		t.logger.Debug("handling block data", zap.Int64("height", blockHeight), zap.Time("time", tm))
 		for _, evt := range data.Events {
 			switch evt.Type {
@@ -81,14 +93,14 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 				attrs := eventAttrsFromEvent(evt)
 				addr, err := attrs.DepositorAddr()
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				if _, ok := ignoredAddresses[addr]; ok {
 					continue
 				}
 				poolID, err := attrs.PoolID()
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				st := updates.depositStatusByAddress.ActionStatus(addr)
 				st.IncreaseCount(poolID, dateKey, 1)
@@ -96,31 +108,30 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 				attrs := eventAttrsFromEvent(evt)
 				addr, err := attrs.SwapRequesterAddr()
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				if _, ok := ignoredAddresses[addr]; ok {
 					continue
 				}
 				poolID, err := attrs.PoolID()
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				offerCoinFee, err := attrs.OfferCoinFee()
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
 				swapPrice, err := attrs.SwapPrice()
 				if err != nil {
-					return nil, nil, err
+					return nil, err
 				}
-				poolByID := data.PoolByID()
 				pool, ok := poolByID[poolID]
 				if !ok {
-					return nil, nil, fmt.Errorf("pool id %d not found: %w", poolID, err)
+					return nil, fmt.Errorf("pool id %d not found: %w", poolID, err)
 				}
 				demandCoinDenom, ok := oppositeReserveCoinDenom(pool, offerCoinFee.Denom)
 				if !ok {
-					return nil, nil, fmt.Errorf("opposite reserve coin denom not found")
+					return nil, fmt.Errorf("opposite reserve coin denom not found")
 				}
 				var demandCoinFee sdk.Coin
 				if offerCoinFee.Denom < demandCoinDenom {
@@ -138,5 +149,5 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 		}
 		blockHeight++
 	}
-	return updates, lastData, nil
+	return updates, nil
 }

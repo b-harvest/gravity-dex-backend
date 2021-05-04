@@ -1,6 +1,10 @@
 package schema
 
-import "time"
+import (
+	"time"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
 
 const (
 	CheckpointBlockHeightKey = "blockHeight"
@@ -13,26 +17,59 @@ type Checkpoint struct {
 }
 
 const (
-	AccountBlockHeightKey   = "blockHeight"
-	AccountAddressKey       = "address"
-	AccountCoinsKey         = "coins"
-	AccountDepositStatusKey = "depositStatus"
-	AccountSwapStatusKey    = "swapStatus"
-	AccountMetadataKey      = "metadata"
+	AccountAddressKey   = "address"
+	AccountUsernameKey  = "username"
+	AccountIsBlockedKey = "isBlocked"
+	AccountBlockedAtKey = "blockedAt"
+	AccountCreatedAtKey = "createdAt"
+	AccountStatusKey    = "status"
+	AccountBalanceKey   = "balance"
 )
 
 type Account struct {
-	BlockHeight   int64               `bson:"blockHeight"`
-	Address       string              `bson:"address"`
-	Coins         []Coin              `bson:"coins"`
-	DepositStatus AccountActionStatus `bson:"depositStatus"`
-	SwapStatus    AccountActionStatus `bson:"swapStatus"`
-	Metadata      *AccountMetadata    `bson:"metadata"`
+	Address   string     `bson:"address"`
+	Username  string     `bson:"username"`
+	IsBlocked bool       `bson:"isBlocked"`
+	BlockedAt *time.Time `bson:"blockedAt,omitempty"`
+	CreatedAt time.Time  `bson:"createdAt"`
+
+	Status  *AccountStatus `bson:"status"`
+	Balance *Balance       `bson:"balance"`
 }
 
-type Coin struct {
-	Denom  string `bson:"denom"`
-	Amount int64  `bson:"amount"`
+func (acc Account) DepositStatus() AccountActionStatus {
+	if acc.Status != nil {
+		return acc.Status.Deposits
+	}
+	return AccountActionStatus{}
+}
+
+func (acc Account) SwapStatus() AccountActionStatus {
+	if acc.Status != nil {
+		return acc.Status.Swaps
+	}
+	return AccountActionStatus{}
+}
+
+func (acc Account) Coins() []Coin {
+	if acc.Balance != nil {
+		return acc.Balance.Coins
+	}
+	return nil
+}
+
+const (
+	AccountStatusBlockHeightKey = "blockHeight"
+	AccountStatusAddressKey     = "address"
+	AccountStatusDepositsKey    = "deposits"
+	AccountStatusSwapsKey       = "swaps"
+)
+
+type AccountStatus struct {
+	BlockHeight int64               `bson:"blockHeight"`
+	Address     string              `bson:"address"`
+	Deposits    AccountActionStatus `bson:"deposits"`
+	Swaps       AccountActionStatus `bson:"swaps"`
 }
 
 type AccountActionStatus struct {
@@ -47,6 +84,18 @@ func NewAccountActionStatus() AccountActionStatus {
 		CountByPoolID:       make(CountByPoolID),
 		CountByPoolIDByDate: make(map[string]CountByPoolID),
 	}
+}
+
+func MergeAccountActionStatuses(ss ...AccountActionStatus) AccountActionStatus {
+	s := NewAccountActionStatus()
+	for _, s2 := range ss {
+		for date, c := range s2.CountByPoolIDByDate {
+			for id, c2 := range c {
+				s.IncreaseCount(id, date, c2)
+			}
+		}
+	}
+	return s
 }
 
 func (s AccountActionStatus) NumDifferentPools() int {
@@ -71,50 +120,104 @@ func (s *AccountActionStatus) IncreaseCount(poolID uint64, date string, amount i
 	c[poolID] += amount
 }
 
-func MergeAccountActionStatuses(ss ...AccountActionStatus) AccountActionStatus {
-	s := AccountActionStatus{
-		CountByPoolID:       make(CountByPoolID),
-		CountByPoolIDByDate: make(map[string]CountByPoolID),
-	}
-	for _, s2 := range ss {
-		for date, c := range s2.CountByPoolIDByDate {
-			for id, c2 := range c {
-				s.IncreaseCount(id, date, c2)
-			}
-		}
-	}
-	return s
-}
-
 const (
-	AccountMetadataAddressKey   = "address"
-	AccountMetadataUsernameKey  = "username"
-	AccountMetadataIsBlockedKey = "isBlocked"
-	AccountMetadataBlockedAtKey = "blockedAt"
-	AccountMetadataCreatedAtKey = "createdAt"
+	BalanceBlockHeightKey = "blockHeight"
+	BalanceAddressKey     = "address"
+	BalanceCoinsKey       = "coins"
 )
 
-type AccountMetadata struct {
-	Address   string     `bson:"address"`
-	Username  string     `bson:"username"`
-	IsBlocked bool       `bson:"isBlocked"`
-	BlockedAt *time.Time `bson:"blockedAt,omitempty"`
-	CreatedAt time.Time  `bson:"createdAt"`
+type Balance struct {
+	BlockHeight int64  `bson:"blockHeight"`
+	Address     string `bson:"address"`
+	Coins       []Coin `bson:"coins"`
+}
+
+type Coin struct {
+	Denom  string `bson:"denom"`
+	Amount int64  `bson:"amount"`
+}
+
+func CoinFromSDK(coin sdk.Coin) Coin {
+	return Coin{Denom: coin.Denom, Amount: coin.Amount.Int64()}
+}
+
+func CoinsFromSDK(coins sdk.Coins) []Coin {
+	var cs []Coin
+	for _, c := range coins {
+		cs = append(cs, CoinFromSDK(c))
+	}
+	return cs
 }
 
 const (
-	PoolBlockHeightKey    = "blockHeight"
-	PoolIDKey             = "id"
-	PoolReserveCoinsKey   = "reserveCoins"
-	PoolPoolCoinKey       = "poolCoin"
-	PoolSwapFeeVolumesKey = "swapFeeVolumes"
+	SupplyBlockHeightKey = "blockHeight"
+	SupplyDenomKey       = "denom"
+	SupplyAmountKey      = "amount"
+)
+
+type Supply struct {
+	BlockHeight int64 `bson:"blockHeight"`
+	Coin        `bson:",inline"`
+}
+
+const (
+	PoolIDKey                    = "id"
+	PoolReserveAccountAddressKey = "reserveAccountAddress"
+	PoolReserveCoinDenomsKey     = "reserveCoinDenoms"
+	PoolPoolCoinDenomKey         = "poolCoinDenom"
+	PoolStatusKey                = "status"
+	PoolReserveAccountBalanceKey = "reserveAccountBalance"
+	PoolPoolCoinSupplyKey        = "poolCoinSupply"
 )
 
 type Pool struct {
+	ID                    uint64   `bson:"id"`
+	ReserveAccountAddress string   `bson:"reserveAccountAddress"`
+	ReserveCoinDenoms     []string `bson:"reserveCoinDenoms"`
+	PoolCoinDenom         string   `bson:"poolCoinDenom"`
+
+	Status                *PoolStatus `bson:"status"`
+	ReserveAccountBalance *Balance    `bson:"reserveAccountBalance"`
+	PoolCoinSupply        *Supply     `bson:"poolCoinSupply"`
+}
+
+func (p Pool) SwapFeeVolumes() Volumes {
+	if p.Status != nil {
+		return p.Status.SwapFeeVolumes
+	}
+	return Volumes{}
+}
+
+func (p Pool) ReserveCoins() []Coin {
+	var cs []Coin
+	if p.ReserveAccountBalance != nil {
+		cm := make(map[string]Coin)
+		for _, c := range p.ReserveAccountBalance.Coins {
+			cm[c.Denom] = c
+		}
+		for _, denom := range p.ReserveCoinDenoms {
+			cs = append(cs, cm[denom])
+		}
+	}
+	return cs
+}
+
+func (p Pool) PoolCoinAmount() int64 {
+	if p.PoolCoinSupply != nil {
+		return p.PoolCoinSupply.Amount
+	}
+	return 0
+}
+
+const (
+	PoolStatusBlockHeightKey    = "blockHeight"
+	PoolStatusIDKey             = "id"
+	PoolStatusSwapFeeVolumesKey = "swapFeeVolumes"
+)
+
+type PoolStatus struct {
 	BlockHeight    int64   `bson:"blockHeight"`
 	ID             uint64  `bson:"id"`
-	ReserveCoins   []Coin  `bson:"reserveCoins"`
-	PoolCoin       *Coin   `bson:"poolCoin,omitempty"`
 	SwapFeeVolumes Volumes `bson:"swapFeeVolumes"`
 }
 
