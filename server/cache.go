@@ -15,7 +15,7 @@ import (
 	"github.com/b-harvest/gravity-dex-backend/util"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var jsonit = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, priceTable price.Table) error {
 	cache := schema.AccountsCache{
@@ -134,7 +134,7 @@ func (s *Server) SaveCache(ctx context.Context, key string, v interface{}) error
 		return fmt.Errorf("get redis conn: %w", err)
 	}
 	defer c.Close()
-	b, err := json.Marshal(v)
+	b, err := jsonit.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("marshal response: %w", err)
 	}
@@ -168,7 +168,7 @@ func (s *Server) LoadAccountsCache(ctx context.Context) (cache schema.AccountsCa
 	if err != nil {
 		return cache, err
 	}
-	err = json.Unmarshal(b, &cache)
+	err = jsonit.Unmarshal(b, &cache)
 	if err != nil {
 		return cache, fmt.Errorf("unmarshal response: %w", err)
 	}
@@ -180,7 +180,7 @@ func (s *Server) LoadPoolsCache(ctx context.Context) (cache schema.PoolsCache, e
 	if err != nil {
 		return cache, err
 	}
-	err = json.Unmarshal(b, &cache)
+	err = jsonit.Unmarshal(b, &cache)
 	if err != nil {
 		return cache, fmt.Errorf("unmarshal response: %w", err)
 	}
@@ -192,7 +192,7 @@ func (s *Server) LoadPricesCache(ctx context.Context) (cache schema.PricesCache,
 	if err != nil {
 		return cache, err
 	}
-	err = json.Unmarshal(b, &cache)
+	err = jsonit.Unmarshal(b, &cache)
 	if err != nil {
 		return cache, fmt.Errorf("unmarshal response: %w", err)
 	}

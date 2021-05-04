@@ -1,29 +1,31 @@
 package transformer
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	liquiditytypes "github.com/tendermint/liquidity/x/liquidity/types"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	"github.com/b-harvest/gravity-dex-backend/schema"
 )
 
 type BlockData struct {
-	Header          tmproto.Header         `json:"block_header"`
-	BankModuleState banktypes.GenesisState `json:"bank_module_states"`
-	Events          sdk.Events             `json:"end_block_events"`
-	Pools           []liquiditytypes.Pool  `json:"pools"`
+	Header          tmproto.Header          `json:"block_header"`
+	BankModuleState *banktypes.GenesisState `json:"bank_module_states"`
+	Events          []abcitypes.Event       `json:"end_block_events"`
+	Pools           []liquiditytypes.Pool   `json:"pools"`
 }
 
 func (d *BlockData) BalancesByAddress() map[string][]schema.Coin {
 	m := make(map[string][]schema.Coin)
-	for _, b := range d.BankModuleState.Balances {
-		coins := []schema.Coin{}
-		for _, c := range b.Coins {
-			coins = append(coins, schema.Coin{Denom: c.Denom, Amount: c.Amount.Int64()})
+	if d.BankModuleState != nil {
+		for _, b := range d.BankModuleState.Balances {
+			coins := []schema.Coin{}
+			for _, c := range b.Coins {
+				coins = append(coins, schema.Coin{Denom: c.Denom, Amount: c.Amount.Int64()})
+			}
+			m[b.Address] = coins
 		}
-		m[b.Address] = coins
 	}
 	return m
 }

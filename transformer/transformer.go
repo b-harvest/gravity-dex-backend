@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -22,7 +21,7 @@ import (
 	"github.com/b-harvest/gravity-dex-backend/util"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var jsonit = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Transformer struct {
 	cfg    config.TransformerConfig
@@ -123,32 +122,14 @@ func (t *Transformer) blockDataFilename(blockHeight int64) string {
 	return filepath.Join(t.cfg.BlockDataDir, fmt.Sprintf(t.cfg.BlockDataFilename, p, blockHeight))
 }
 
-func (t *Transformer) ReadBlockData(ctx context.Context, blockHeight int64) (*BlockData, error) {
-	var data *BlockData
-	var err error
-	ticker := util.NewImmediateTicker(t.cfg.BlockDataWaitingInterval)
-	for i := 0; i < 5; i++ {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-ticker.C:
-			data, err = t.readBlockData(blockHeight)
-			if !errors.Is(err, io.EOF) {
-				return data, err
-			}
-		}
-	}
-	return nil, err
-}
-
-func (t *Transformer) readBlockData(blockHeight int64) (*BlockData, error) {
+func (t *Transformer) ReadBlockData(blockHeight int64) (*BlockData, error) {
 	f, err := os.Open(t.blockDataFilename(blockHeight))
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	var data BlockData
-	if err := json.NewDecoder(f).Decode(&data); err != nil {
+	if err := jsonit.NewDecoder(f).Decode(&data); err != nil {
 		return nil, err
 	}
 	return &data, nil
@@ -163,7 +144,7 @@ func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64) (
 		case <-ticker.C:
 		}
 		t.logger.Debug("waiting for the block data", zap.Int64("height", blockHeight))
-		data, err := t.ReadBlockData(ctx, blockHeight)
+		data, err := t.ReadBlockData(blockHeight)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				return nil, fmt.Errorf("read block data: %w", err)
@@ -197,8 +178,15 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 	for _, p := range data.Pools {
 		reserveAccAddrs[p.ReserveAccountAddress] = struct{}{}
 	}
+	addrsToUpdate := make(map[string]struct{})
+	for addr := range updates.depositStatusByAddress {
+		addrsToUpdate[addr] = struct{}{}
+	}
+	for addr := range updates.swapStatusByAddress {
+		addrsToUpdate[addr] = struct{}{}
+	}
 	var writes []mongo.WriteModel
-	for addr, b := range balancesByAddr {
+	for addr := range addrsToUpdate {
 		if _, ok := reserveAccAddrs[addr]; ok {
 			continue
 		}
@@ -213,19 +201,21 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 		}
 		acc.DepositStatus = schema.MergeAccountActionStatuses(acc.DepositStatus, updates.depositStatusByAddress[addr])
 		acc.SwapStatus = schema.MergeAccountActionStatuses(acc.SwapStatus, updates.swapStatusByAddress[addr])
+		set := bson.M{
+			schema.AccountDepositStatusKey: acc.DepositStatus,
+			schema.AccountSwapStatusKey:    acc.SwapStatus,
+		}
+		b, ok := balancesByAddr[addr]
+		if ok {
+			set[schema.AccountCoinsKey] = b
+		}
 		writes = append(writes,
 			mongo.NewUpdateOneModel().
 				SetFilter(bson.M{
 					schema.AccountBlockHeightKey: lastBlockHeight,
 					schema.AccountAddressKey:     addr,
 				}).
-				SetUpdate(bson.M{
-					"$set": bson.M{
-						schema.AccountCoinsKey:         b,
-						schema.AccountDepositStatusKey: acc.DepositStatus,
-						schema.AccountSwapStatusKey:    acc.SwapStatus,
-					},
-				}).
+				SetUpdate(bson.M{"$set": set}).
 				SetUpsert(true))
 	}
 	if len(writes) > 0 {
@@ -239,19 +229,6 @@ func (t *Transformer) UpdateAccounts(ctx context.Context, currentBlockHeight, la
 func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight, lastBlockHeight int64, updates *StateUpdates, data *BlockData, balancesByAddr map[string][]schema.Coin) error {
 	var writes []mongo.WriteModel
 	for _, p := range data.Pools {
-		var reserveCoins []schema.Coin
-		for _, d := range p.ReserveCoinDenoms {
-			var amount int64
-			for _, c := range balancesByAddr[p.ReserveAccountAddress] {
-				if c.Denom == d {
-					amount = c.Amount
-					break
-				}
-			}
-			reserveCoins = append(reserveCoins, schema.Coin{Denom: d, Amount: amount})
-		}
-		// this is not necessary if it assumed that reserve coin denoms in data are already sorted.
-		sort.Slice(reserveCoins, func(i, j int) bool { return reserveCoins[i].Denom < reserveCoins[j].Denom })
 		var pool schema.Pool
 		if currentBlockHeight > 0 {
 			if err := t.PoolCollection().FindOne(ctx, bson.M{
@@ -263,22 +240,39 @@ func (t *Transformer) UpdatePools(ctx context.Context, currentBlockHeight, lastB
 		}
 		pool.SwapFeeVolumes = schema.MergeVolumes(pool.SwapFeeVolumes, updates.swapVolumesByPoolID[p.Id])
 		pool.SwapFeeVolumes.RemoveOutdated(data.Header.Time.Add(-time.Hour))
+		set := bson.M{
+			schema.PoolSwapFeeVolumesKey: pool.SwapFeeVolumes,
+		}
+		b, ok := balancesByAddr[p.ReserveAccountAddress]
+		if ok {
+			var reserveCoins []schema.Coin
+			for _, d := range p.ReserveCoinDenoms {
+				var amount int64
+				for _, c := range b {
+					if c.Denom == d {
+						amount = c.Amount
+						break
+					}
+				}
+				reserveCoins = append(reserveCoins, schema.Coin{Denom: d, Amount: amount})
+			}
+			// this is not necessary if it assumed that reserve coin denoms in data are already sorted.
+			sort.Slice(reserveCoins, func(i, j int) bool { return reserveCoins[i].Denom < reserveCoins[j].Denom })
+			if data.BankModuleState != nil { // actually this check is not needed, but it exists for safety reason.
+				set[schema.PoolPoolCoinKey] = schema.Coin{
+					Denom:  p.PoolCoinDenom,
+					Amount: data.BankModuleState.Supply.AmountOf(p.PoolCoinDenom).Int64(),
+				}
+			}
+			set[schema.PoolReserveCoinsKey] = reserveCoins
+		}
 		writes = append(writes,
 			mongo.NewUpdateOneModel().
 				SetFilter(bson.M{
 					schema.PoolBlockHeightKey: lastBlockHeight,
 					schema.PoolIDKey:          p.Id,
 				}).
-				SetUpdate(bson.M{
-					"$set": bson.M{
-						schema.PoolReserveCoins: reserveCoins,
-						schema.PoolPoolCoinKey: schema.Coin{
-							Denom:  p.PoolCoinDenom,
-							Amount: data.BankModuleState.Supply.AmountOf(p.PoolCoinDenom).Int64(),
-						},
-						schema.PoolSwapFeeVolumesKey: pool.SwapFeeVolumes,
-					},
-				}).
+				SetUpdate(bson.M{"$set": set}).
 				SetUpsert(true))
 	}
 	if len(writes) > 0 {

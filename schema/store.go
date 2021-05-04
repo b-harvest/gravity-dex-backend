@@ -105,7 +105,7 @@ type AccountMetadata struct {
 const (
 	PoolBlockHeightKey    = "blockHeight"
 	PoolIDKey             = "id"
-	PoolReserveCoins      = "reserveCoins"
+	PoolReserveCoinsKey   = "reserveCoins"
 	PoolPoolCoinKey       = "poolCoin"
 	PoolSwapFeeVolumesKey = "swapFeeVolumes"
 )

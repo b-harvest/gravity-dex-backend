@@ -6,11 +6,12 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	liquiditytypes "github.com/tendermint/liquidity/x/liquidity/types"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 )
 
 type EventAttributes map[string]string
 
-func eventAttrsFromEvent(event sdk.Event) EventAttributes {
+func eventAttrsFromEvent(event abcitypes.Event) EventAttributes {
 	m := make(EventAttributes)
 	for _, attr := range event.Attributes {
 		m[string(attr.Key)] = string(attr.Value)

@@ -66,7 +66,11 @@ func TransformerCmd() *cobra.Command {
 
 			done := make(chan error)
 			go func() {
-				done <- t.Run(ctx)
+				err := t.Run(ctx)
+				if err != nil {
+					logger.Error("failed to run transformer", zap.Error(err))
+				}
+				done <- err
 			}()
 
 			quit := make(chan os.Signal, 1)
