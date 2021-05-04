@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -24,7 +25,7 @@ func main() {
 
 	now := time.Now()
 	rd := csv.NewReader(f)
-	var docs []interface{}
+	var writes []mongo.WriteModel
 	for {
 		row, err := rd.Read()
 		if err != nil {
@@ -34,12 +35,18 @@ func main() {
 			log.Fatalf("failed to read row: %v", err)
 		}
 		if len(row) == 2 {
-			docs = append(docs, schema.AccountMetadata{
-				Address:   row[0],
-				Username:  row[1],
-				IsBlocked: false,
-				CreatedAt: now,
-			})
+			addr, username := row[0], row[1]
+			writes = append(writes, mongo.NewUpdateOneModel().SetFilter(bson.M{
+				schema.AccountMetadataAddressKey: addr,
+			}).SetUpdate(bson.M{
+				"$set": bson.M{
+					schema.AccountMetadataUsernameKey:  username,
+					schema.AccountMetadataCreatedAtKey: now,
+				},
+				"$setOnInsert": bson.M{
+					schema.AccountMetadataIsBlockedKey: false,
+				},
+			}).SetUpsert(true))
 		}
 	}
 
@@ -50,10 +57,9 @@ func main() {
 	defer mc.Disconnect(context.Background())
 
 	coll := mc.Database("gdex").Collection("accountMetadata")
-	log.Printf("importing %d account metadata", len(docs))
-	r, err := coll.InsertMany(context.Background(), docs)
-	if err != nil {
+	log.Printf("importing %d account metadata", len(writes))
+	if _, err := coll.BulkWrite(context.Background(), writes); err != nil {
 		log.Fatalf("failed to insert account metadata: %v", err)
 	}
-	log.Printf("imported %d account metadata", len(r.InsertedIDs))
+	log.Print("done")
 }

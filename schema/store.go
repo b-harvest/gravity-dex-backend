@@ -88,7 +88,10 @@ func MergeAccountActionStatuses(ss ...AccountActionStatus) AccountActionStatus {
 
 const (
 	AccountMetadataAddressKey   = "address"
+	AccountMetadataUsernameKey  = "username"
 	AccountMetadataIsBlockedKey = "isBlocked"
+	AccountMetadataBlockedAtKey = "blockedAt"
+	AccountMetadataCreatedAtKey = "createdAt"
 )
 
 type AccountMetadata struct {
