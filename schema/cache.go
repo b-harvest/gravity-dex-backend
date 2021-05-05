@@ -3,28 +3,28 @@ package schema
 import "time"
 
 type AccountCache struct {
-	BlockHeight   int64                    `json:"blockHeight"`
-	Address       string                   `json:"address"`
-	Username      string                   `json:"username"`
-	Ranking       int                      `json:"ranking"`
-	TotalScore    float64                  `json:"totalScore"`
-	TradingScore  float64                  `json:"tradingScore"`
-	ActionScore   float64                  `json:"actionScore"`
-	IsValid       bool                     `json:"isValid"`
-	DepositStatus AccountCacheActionStatus `json:"depositStatus"`
-	SwapStatus    AccountCacheActionStatus `json:"swapStatus"`
-	UpdatedAt     time.Time                `json:"updatedAt"`
+	BlockHeight   int64                    `json:"H"`
+	Address       string                   `json:"A"`
+	Username      string                   `json:"U"`
+	Ranking       int                      `json:"R"`
+	TotalScore    float64                  `json:"S"`
+	TradingScore  float64                  `json:"T"`
+	ActionScore   float64                  `json:"AS"`
+	IsValid       bool                     `json:"V"`
+	DepositStatus AccountCacheActionStatus `json:"D"`
+	SwapStatus    AccountCacheActionStatus `json:"SS"`
+	UpdatedAt     time.Time                `json:"UA"`
 }
 
 type AccountCacheActionStatus struct {
-	NumDifferentPools       int            `json:"numDifferentPools"`
-	NumDifferentPoolsByDate map[string]int `json:"numDifferentPoolsByDate"`
+	NumDifferentPools       int            `json:"N"`
+	NumDifferentPoolsByDate map[string]int `json:"B"`
 }
 
 type ScoreBoardCache struct {
-	BlockHeight int64          `json:"blockHeight"`
-	Accounts    []AccountCache `json:"accounts"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
+	BlockHeight int64          `json:"H"`
+	Accounts    []AccountCache `json:"A"`
+	UpdatedAt   time.Time      `json:"U"`
 }
 
 type PoolsCache struct {
