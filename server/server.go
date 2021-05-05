@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -54,8 +55,10 @@ func (s *Server) tradingScore(acc schema.Account, priceTable price.Table) (float
 	}
 	v := 0.0 // total usd value of the user's balances
 	for _, c := range acc.Coins() {
-		if _, ok := denoms[c.Denom]; !ok {
-			continue
+		if !strings.HasPrefix(c.Denom, "pool") {
+			if _, ok := denoms[c.Denom]; !ok {
+				continue
+			}
 		}
 		p, ok := priceTable[c.Denom]
 		if !ok {
