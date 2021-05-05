@@ -8,8 +8,8 @@ type AccountCache struct {
 	Username      string                   `json:"U"`
 	Ranking       int                      `json:"R"`
 	TotalScore    float64                  `json:"S"`
-	TradingScore  float64                  `json:"T"`
 	ActionScore   float64                  `json:"AS"`
+	TradingScore  float64                  `json:"T"`
 	IsValid       bool                     `json:"V"`
 	DepositStatus AccountCacheActionStatus `json:"D"`
 	SwapStatus    AccountCacheActionStatus `json:"SS"`

@@ -156,12 +156,12 @@ func (s *Server) GetActionStatus(c echo.Context) error {
 			Deposit: schema.GetActionStatusResponseStatus{
 				NumDifferentPools:         accCache.DepositStatus.NumDifferentPools,
 				NumDifferentPoolsToday:    accCache.DepositStatus.NumDifferentPoolsByDate[todayKey],
-				MaxNumDifferentPoolsToday: s.cfg.MaxActionScorePerDay,
+				MaxNumDifferentPoolsToday: s.cfg.Score.MaxActionScorePerDay,
 			},
 			Swap: schema.GetActionStatusResponseStatus{
 				NumDifferentPools:         accCache.SwapStatus.NumDifferentPools,
 				NumDifferentPoolsToday:    accCache.SwapStatus.NumDifferentPoolsByDate[todayKey],
-				MaxNumDifferentPoolsToday: s.cfg.MaxActionScorePerDay,
+				MaxNumDifferentPoolsToday: s.cfg.Score.MaxActionScorePerDay,
 			},
 		},
 		UpdatedAt: accCache.UpdatedAt,

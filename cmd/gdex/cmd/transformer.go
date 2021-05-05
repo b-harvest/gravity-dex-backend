@@ -47,7 +47,7 @@ func TransformerCmd() *cobra.Command {
 				return fmt.Errorf("ping mongodb: %w", err)
 			}
 
-			ss := store.NewService(cfg.Transformer.MongoDB, mc)
+			ss := store.NewService(cfg.Transformer.Store, mc)
 			names, err := ss.EnsureDBIndexes(context.Background())
 			if err != nil {
 				return fmt.Errorf("ensure db indexes: %w", err)

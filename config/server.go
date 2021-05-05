@@ -5,6 +5,10 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+
+	"github.com/b-harvest/gravity-dex-backend/service/price"
+	"github.com/b-harvest/gravity-dex-backend/service/score"
+	"github.com/b-harvest/gravity-dex-backend/service/store"
 )
 
 var DefaultServerConfig = ServerConfig{
@@ -43,52 +47,34 @@ var DefaultServerConfig = ServerConfig{
 		{Denom: "udsm", Display: "dsm", Exponent: 6},
 		{Denom: "xrun", Display: "run", Exponent: 6},
 	},
-	CoinMarketCap: DefaultCoinMarketCapConfig,
-	CyberNode:     DefaultCyberNodeConfig,
-	Fixer:         DefaultFixerConfig,
-	RandomOracle:  DefaultRandomOracleConfig,
-	TradingDates: []string{
-		"2021-05-04",
-		"2021-05-05",
-		"2021-05-06",
-		"2021-05-07",
-		"2021-05-08",
-		"2021-05-09",
-		"2021-05-10",
-	},
-	MaxActionScorePerDay: 3,
-	InitialBalancesValue: 40000,
-	TradingScoreRatio:    0.9,
-	ScoreBoardSize:       100,
-	CacheLoadTimeout:     10 * time.Second,
-	CacheUpdateInterval:  5 * time.Second,
-	AddressPrefix:        "cosmos1",
-	MongoDB:              DefaultMongoDBConfig,
-	Redis:                DefaultRedisConfig,
-	Log:                  zap.NewProductionConfig(),
+	ScoreBoardSize:      100,
+	CacheLoadTimeout:    10 * time.Second,
+	CacheUpdateInterval: 5 * time.Second,
+	AddressPrefix:       "cosmos1",
+	Store:               store.DefaultConfig,
+	Price:               price.DefaultConfig,
+	Score:               score.DefaultConfig,
+	MongoDB:             DefaultMongoDBConfig,
+	Redis:               DefaultRedisConfig,
+	Log:                 zap.NewProductionConfig(),
 }
 
 type ServerConfig struct {
-	Debug                bool                `yaml:"debug"`
-	BindAddr             string              `yaml:"bind_addr"`
-	CoinDenoms           []string            `yaml:"coin_denoms"`
-	ManualPrices         []ManualPrice       `yaml:"manual_prices"`
-	DenomMetadata        []DenomMetadata     `yaml:"denom_metadata"`
-	CoinMarketCap        CoinMarketCapConfig `yaml:"coinmarketcap"`
-	CyberNode            CyberNodeConfig     `yaml:"cybernode"`
-	Fixer                FixerConfig         `yaml:"fixer"`
-	RandomOracle         RandomOracleConfig  `yaml:"random_oracle"`
-	TradingDates         []string            `yaml:"trading_dates"`
-	MaxActionScorePerDay int                 `yaml:"max_trading_score_per_day"`
-	InitialBalancesValue float64             `yaml:"initial_balances_value"`
-	TradingScoreRatio    float64             `yaml:"trading_score_ratio"`
-	ScoreBoardSize       int                 `yaml:"score_board_size"`
-	CacheLoadTimeout     time.Duration       `yaml:"cache_load_timeout"`
-	CacheUpdateInterval  time.Duration       `yaml:"cache_update_interval"`
-	AddressPrefix        string              `yaml:"address_prefix"`
-	MongoDB              MongoDBConfig       `yaml:"mongodb"`
-	Redis                RedisConfig         `yaml:"redis"`
-	Log                  zap.Config          `yaml:"log"`
+	Debug               bool            `yaml:"debug"`
+	BindAddr            string          `yaml:"bind_addr"`
+	CoinDenoms          []string        `yaml:"coin_denoms"`
+	ManualPrices        []ManualPrice   `yaml:"manual_prices"`
+	DenomMetadata       []DenomMetadata `yaml:"denom_metadata"`
+	ScoreBoardSize      int             `yaml:"score_board_size"`
+	CacheLoadTimeout    time.Duration   `yaml:"cache_load_timeout"`
+	CacheUpdateInterval time.Duration   `yaml:"cache_update_interval"`
+	AddressPrefix       string          `yaml:"address_prefix"`
+	Store               store.Config    `yaml:"store"`
+	Price               price.Config    `yaml:"price"`
+	Score               score.Config    `yaml:"score"`
+	MongoDB             MongoDBConfig   `yaml:"mongodb"`
+	Redis               RedisConfig     `yaml:"redis"`
+	Log                 zap.Config      `yaml:"log"`
 }
 
 func (cfg ServerConfig) Validate() error {
@@ -98,23 +84,14 @@ func (cfg ServerConfig) Validate() error {
 	if len(cfg.DenomMetadata) == 0 {
 		return fmt.Errorf("'denom_metadata' is empty")
 	}
-	if cfg.CoinMarketCap.APIKey == "" {
-		return fmt.Errorf("'coinmarketcap.api_key' is required")
+	if err := cfg.Store.Validate(); err != nil {
+		return fmt.Errorf("validate 'store' field: %w", err)
 	}
-	if cfg.Fixer.AccessKey == "" {
-		return fmt.Errorf("'fixer.access_key' is required")
+	if err := cfg.Price.Validate(); err != nil {
+		return fmt.Errorf("validate 'price' field: %w", err)
 	}
-	if cfg.RandomOracle.URL == "" {
-		return fmt.Errorf("'random_oracle.url' is required")
-	}
-	if len(cfg.TradingDates) == 0 {
-		return fmt.Errorf("'trading_dates' is empty")
-	}
-	if cfg.InitialBalancesValue <= 0 {
-		return fmt.Errorf("'initial_balances_value' must be positive")
-	}
-	if cfg.TradingScoreRatio < 0 || cfg.TradingScoreRatio > 1 {
-		return fmt.Errorf("'trading_score_ratio' must be between 0~1")
+	if err := cfg.Score.Validate(); err != nil {
+		return fmt.Errorf("validate 'score' field: %w", err)
 	}
 	return nil
 }

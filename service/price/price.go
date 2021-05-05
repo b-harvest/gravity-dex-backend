@@ -6,8 +6,6 @@ import (
 	"sync"
 
 	"golang.org/x/sync/errgroup"
-
-	"github.com/b-harvest/gravity-dex-backend/config"
 )
 
 type Table map[string]float64
@@ -23,7 +21,7 @@ type service struct {
 	cmc *CoinMarketCapService
 }
 
-func NewService(cfg config.ServerConfig) (Service, error) {
+func NewService(cfg Config) (Service, error) {
 	rnd, err := NewRandomOracleService(cfg.RandomOracle.URL)
 	if err != nil {
 		return nil, fmt.Errorf("new random oracle service: %w", err)

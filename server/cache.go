@@ -18,53 +18,35 @@ import (
 var jsonit = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func (s *Server) UpdateAccountsCache(ctx context.Context, blockHeight int64, priceTable price.Table) error {
+	accs, err := s.scs.Scoreboard(ctx, blockHeight, priceTable)
+	if err != nil {
+		return fmt.Errorf("get scoreboard: %w", err)
+	}
 	accCaches := []schema.AccountCache{}
-	now := time.Now()
-	if err := s.ss.IterateAccounts(ctx, blockHeight, func(acc schema.Account) (stop bool, err error) {
-		if acc.Username == "" {
-			return false, nil
-		}
-		ts, err := s.tradingScore(acc, priceTable)
-		if err != nil {
-			return true, fmt.Errorf("calculate trading score for account %q: %w", acc.Address, err)
-		}
-		as, valid := s.actionScore(acc)
-		accCaches = append(accCaches, schema.AccountCache{
-			BlockHeight:  blockHeight,
+	for _, acc := range accs {
+		accCache := schema.AccountCache{
+			BlockHeight:  acc.BlockHeight,
 			Address:      acc.Address,
 			Username:     acc.Username,
-			TotalScore:   ts*s.cfg.TradingScoreRatio + as*(1-s.cfg.TradingScoreRatio),
-			TradingScore: ts,
-			ActionScore:  as,
-			IsValid:      valid,
+			Ranking:      acc.Ranking,
+			TotalScore:   acc.TotalScore,
+			ActionScore:  acc.ActionScore,
+			TradingScore: acc.TradingScore,
+			IsValid:      acc.IsValid,
 			DepositStatus: schema.AccountCacheActionStatus{
-				NumDifferentPools:       acc.DepositStatus().NumDifferentPools(),
-				NumDifferentPoolsByDate: acc.DepositStatus().NumDifferentPoolsByDate(),
+				NumDifferentPools:       acc.DepositStatus.NumDifferentPools,
+				NumDifferentPoolsByDate: acc.DepositStatus.NumDifferentPoolsByDate,
 			},
 			SwapStatus: schema.AccountCacheActionStatus{
-				NumDifferentPools:       acc.SwapStatus().NumDifferentPools(),
-				NumDifferentPoolsByDate: acc.SwapStatus().NumDifferentPoolsByDate(),
+				NumDifferentPools:       acc.SwapStatus.NumDifferentPools,
+				NumDifferentPoolsByDate: acc.SwapStatus.NumDifferentPoolsByDate,
 			},
-			UpdatedAt: now,
-		})
-		return false, nil
-	}); err != nil {
-		return err
-	}
-	sort.SliceStable(accCaches, func(i, j int) bool {
-		if accCaches[i].IsValid != accCaches[j].IsValid {
-			return accCaches[i].IsValid
+			UpdatedAt: acc.UpdatedAt,
 		}
-		if accCaches[i].TotalScore != accCaches[j].TotalScore {
-			return accCaches[i].TotalScore > accCaches[j].TotalScore
-		}
-		return accCaches[i].Address < accCaches[j].Address
-	})
-	for i := range accCaches {
-		accCaches[i].Ranking = i + 1
-		if err := s.SaveAccountCache(ctx, accCaches[i].Address, accCaches[i]); err != nil {
+		if err := s.SaveAccountCache(ctx, acc.Address, accCache); err != nil {
 			return fmt.Errorf("save account cache: %w", err)
 		}
+		accCaches = append(accCaches, accCache)
 	}
 	sbCache := schema.ScoreBoardCache{
 		BlockHeight: blockHeight,

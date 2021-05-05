@@ -20,6 +20,7 @@ import (
 	"github.com/b-harvest/gravity-dex-backend/server"
 	"github.com/b-harvest/gravity-dex-backend/service/price"
 	"github.com/b-harvest/gravity-dex-backend/service/pricetable"
+	"github.com/b-harvest/gravity-dex-backend/service/score"
 	"github.com/b-harvest/gravity-dex-backend/service/store"
 )
 
@@ -66,13 +67,14 @@ func ServerCmd() *cobra.Command {
 			}
 			conn.Close()
 
-			ss := store.NewService(cfg.Server.MongoDB, mc)
-			ps, err := price.NewService(cfg.Server)
+			ss := store.NewService(cfg.Server.Store, mc)
+			ps, err := price.NewService(cfg.Server.Price)
 			if err != nil {
 				return fmt.Errorf("new coinmarketcap service: %w", err)
 			}
 			pts := pricetable.NewService(cfg.Server, ps)
-			s := server.New(cfg.Server, ss, ps, pts, rp, logger)
+			scs := score.NewService(cfg.Server.Score, ss)
+			s := server.New(cfg.Server, ss, ps, pts, scs, rp, logger)
 
 			names, err := ss.EnsureDBIndexes(context.Background())
 			if err != nil {

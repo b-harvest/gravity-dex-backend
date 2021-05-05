@@ -10,16 +10,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
 )
 
 type Service struct {
-	cfg config.MongoDBConfig
+	cfg Config
 	mc  *mongo.Client
 }
 
-func NewService(cfg config.MongoDBConfig, mc *mongo.Client) *Service {
+func NewService(cfg Config, mc *mongo.Client) *Service {
 	return &Service{cfg, mc}
 }
 
