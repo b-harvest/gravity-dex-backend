@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/b-harvest/gravity-dex-backend/config"
 	"github.com/b-harvest/gravity-dex-backend/schema"
 	"github.com/b-harvest/gravity-dex-backend/service/price"
 	"github.com/b-harvest/gravity-dex-backend/util"
@@ -19,11 +18,11 @@ func init() {
 }
 
 type Service struct {
-	cfg config.ServerConfig
+	cfg Config
 	ps  price.Service
 }
 
-func NewService(cfg config.ServerConfig, ps price.Service) *Service {
+func NewService(cfg Config, ps price.Service) *Service {
 	return &Service{cfg, ps}
 }
 
@@ -61,8 +60,8 @@ func (s *Service) PriceTable(ctx context.Context, pools []schema.Pool) (price.Ta
 
 type Context struct {
 	coinDenoms    []string
-	manualPrices  map[string]config.ManualPrice
-	denomMetadata map[string]config.DenomMetadata
+	manualPrices  map[string]ManualPrice
+	denomMetadata map[string]DenomMetadata
 	priceTable    price.Table
 	pools         map[string]*schema.Pool
 }

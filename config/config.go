@@ -9,11 +9,13 @@ import (
 var DefaultConfig = Config{
 	Server:      DefaultServerConfig,
 	Transformer: DefaultTransformerConfig,
+	Dumper:      DefaultDumperConfig,
 }
 
 type Config struct {
 	Server      ServerConfig      `yaml:"server"`
 	Transformer TransformerConfig `yaml:"transformer"`
+	Dumper      DumperConfig      `yaml:"dumper"`
 }
 
 func Load(path string) (Config, error) {

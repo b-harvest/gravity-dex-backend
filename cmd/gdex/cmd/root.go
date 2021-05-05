@@ -9,5 +9,6 @@ func RootCmd() *cobra.Command {
 	}
 	cmd.AddCommand(TransformerCmd())
 	cmd.AddCommand(ServerCmd())
+	cmd.AddCommand(DumperCmd())
 	return cmd
 }

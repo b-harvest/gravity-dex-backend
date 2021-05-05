@@ -70,9 +70,9 @@ func ServerCmd() *cobra.Command {
 			ss := store.NewService(cfg.Server.Store, mc)
 			ps, err := price.NewService(cfg.Server.Price)
 			if err != nil {
-				return fmt.Errorf("new coinmarketcap service: %w", err)
+				return fmt.Errorf("new price service: %w", err)
 			}
-			pts := pricetable.NewService(cfg.Server, ps)
+			pts := pricetable.NewService(cfg.Server.PriceTable, ps)
 			scs := score.NewService(cfg.Server.Score, ss)
 			s := server.New(cfg.Server, ss, ps, pts, scs, rp, logger)
 
