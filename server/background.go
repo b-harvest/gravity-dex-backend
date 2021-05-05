@@ -19,10 +19,10 @@ func (s *Server) RunBackgroundUpdater(ctx context.Context) error {
 		}
 		s.logger.Debug("updating caches")
 		if err := s.UpdateCaches(ctx); err != nil {
-			if !errors.Is(err, context.Canceled) {
-				s.logger.Error("failed to update caches", zap.Error(err))
+			if errors.Is(err, context.Canceled) {
+				return err
 			}
-			return err
+			s.logger.Error("failed to update caches", zap.Error(err))
 		}
 		select {
 		case <-ctx.Done():
