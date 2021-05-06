@@ -21,6 +21,114 @@ func NewStats() *Stats {
 	}
 }
 
+func (s *Stats) NumActiveAddresses() int {
+	return len(s.ActiveAddresses)
+}
+
+func (s *Stats) NumDeposits() int {
+	cnt := 0
+	for _, hs := range s.ByHour {
+		for _, n := range hs.NumDepositsByPoolID {
+			cnt += n
+		}
+	}
+	return cnt
+}
+
+func (s *Stats) NumDepositsSince(t time.Time) int {
+	t = t.UTC().Truncate(time.Hour)
+	now := time.Now()
+	cnt := 0
+	for !t.After(now) {
+		hs, ok := s.ByHour[HourKey(t)]
+		if ok {
+			for _, n := range hs.NumDepositsByPoolID {
+				cnt += n
+			}
+		}
+		t = t.Add(time.Hour)
+	}
+	return cnt
+}
+
+func (s *Stats) NumSwaps() int {
+	cnt := 0
+	for _, hs := range s.ByHour {
+		for _, n := range hs.NumSwapsByPoolID {
+			cnt += n
+		}
+	}
+	return cnt
+}
+
+func (s *Stats) NumSwapsSince(t time.Time) int {
+	t = t.UTC().Truncate(time.Hour)
+	now := time.Now()
+	cnt := 0
+	for !t.After(now) {
+		hs, ok := s.ByHour[HourKey(t)]
+		if ok {
+			for _, n := range hs.NumSwapsByPoolID {
+				cnt += n
+			}
+		}
+		t = t.Add(time.Hour)
+	}
+	return cnt
+}
+
+func (s *Stats) OfferCoins() Coins {
+	cs := make(Coins)
+	for _, hs := range s.ByHour {
+		for _, v := range hs.SwapVolumeByPoolID {
+			cs.Add(v.OfferCoins)
+		}
+	}
+	return cs
+}
+
+func (s *Stats) DemandCoins() Coins {
+	cs := make(Coins)
+	for _, hs := range s.ByHour {
+		for _, v := range hs.SwapVolumeByPoolID {
+			cs.Add(v.DemandCoins)
+		}
+	}
+	return cs
+}
+
+func (s *Stats) OfferCoinsSince(t time.Time) Coins {
+	t = t.UTC().Truncate(time.Hour)
+	now := time.Now()
+	cs := make(Coins)
+	for !t.After(now) {
+		hs, ok := s.ByHour[HourKey(t)]
+		if ok {
+			for _, v := range hs.SwapVolumeByPoolID {
+				cs.Add(v.OfferCoins)
+			}
+		}
+		t = t.Add(time.Hour)
+	}
+	return cs
+}
+
+func (s *Stats) DemandCoinsSince(t time.Time) Coins {
+	t = t.UTC().Truncate(time.Hour)
+	now := time.Now()
+	cs := make(Coins)
+	for !t.After(now) {
+		hs, ok := s.ByHour[HourKey(t)]
+		if ok {
+			for _, v := range hs.SwapVolumeByPoolID {
+				cs.Add(v.DemandCoins)
+			}
+		}
+		t = t.Add(time.Hour)
+	}
+	return cs
+}
+
 func (s *Stats) AddActiveAddress(addr string) {
 	s.ActiveAddresses[addr] = struct{}{}
 }

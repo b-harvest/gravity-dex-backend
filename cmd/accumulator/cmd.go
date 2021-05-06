@@ -78,25 +78,22 @@ func RootCmd() *cobra.Command {
 				}
 			}
 
+			yesterday := time.Now().AddDate(0, 0, -1)
 			log.Printf("active addresses = %d", len(st.ActiveAddresses))
-			log.Printf("extracting last 24h information")
-			now := time.Now().UTC().Truncate(time.Hour)
-			past := now.AddDate(0, 0, -1)
-			for !past.After(now) {
-				hourKey := HourKey(past)
-				hs, ok := st.ByHour[hourKey]
-				if ok {
-					ts := 0
-					for _, n := range hs.NumDepositsByPoolID {
-						ts += n
-					}
-					for _, n := range hs.NumSwapsByPoolID {
-						ts += n
-					}
-					log.Printf("[%s] total deposit/swaps = %d", hourKey, ts)
-				}
-				past = past.Add(time.Hour)
-			}
+
+			log.Printf("total %d deposits, %d swaps", st.NumDeposits(), st.NumSwaps())
+			log.Printf("(last 24 hours) %d deposits, %d swaps", st.NumDepositsSince(yesterday), st.NumSwapsSince(yesterday))
+
+			v := st.OfferCoins()
+			v.Add(st.DemandCoins())
+			log.Printf("total swapped coins (offer coins + demand coins) = %s", v)
+			v = st.OfferCoinsSince(yesterday)
+			v.Add(st.DemandCoinsSince(yesterday))
+			log.Printf("(last 24 hours) total swapped coins (offer coins + demand coins) = %s", v)
+
+			log.Printf("hint: you can obtain the swap volume by first calculating " +
+				"the value of swapped coins(lookup the price table!) then " +
+				"divide it by 2(since it is the sum of offer coins AND demand coins)")
 
 			return nil
 		},
