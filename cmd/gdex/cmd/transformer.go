@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -74,7 +75,7 @@ func TransformerCmd() *cobra.Command {
 			}()
 
 			quit := make(chan os.Signal, 1)
-			signal.Notify(quit, os.Interrupt)
+			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 			<-quit
 
 			logger.Info("gracefully shutting down")

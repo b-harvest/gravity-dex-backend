@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -100,7 +101,7 @@ func ServerCmd() *cobra.Command {
 			})
 
 			quit := make(chan os.Signal, 1)
-			signal.Notify(quit, os.Interrupt)
+			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 			<-quit
 
 			logger.Info("gracefully shutting down")
