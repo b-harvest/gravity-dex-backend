@@ -19,9 +19,6 @@ func NewService(cfg Config, ss *store.Service) *Service {
 }
 
 func (s *Service) ActionScore(acc schema.Account) (float64, bool, error) {
-	if acc.Status == nil {
-		return 0, false, fmt.Errorf("missing account status")
-	}
 	ds := acc.DepositStatus().NumDifferentPoolsByDate()
 	ss := acc.SwapStatus().NumDifferentPoolsByDate()
 	score := 0.0
