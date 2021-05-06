@@ -28,9 +28,10 @@ type ScoreBoardCache struct {
 }
 
 type PoolsCache struct {
-	BlockHeight int64            `json:"blockHeight"`
-	Pools       []PoolsCachePool `json:"pools"`
-	UpdatedAt   time.Time        `json:"updatedAt"`
+	BlockHeight      int64            `json:"blockHeight"`
+	Pools            []PoolsCachePool `json:"pools"`
+	TotalValueLocked float64          `json:"totalValueLocked"`
+	UpdatedAt        time.Time        `json:"updatedAt"`
 }
 
 type PoolsCachePool struct {

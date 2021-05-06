@@ -64,6 +64,7 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 		BlockHeight: blockHeight,
 		Pools:       []schema.PoolsCachePool{},
 	}
+	tvl := 0.0
 	for _, p := range pools {
 		if p.PoolCoinAmount() == 0 {
 			continue
@@ -93,10 +94,12 @@ func (s *Server) UpdatePoolsCache(ctx context.Context, blockHeight int64, pools 
 			SwapFeeValueSinceLastHour: feeValue,
 			APY:                       feeValue / poolValue * 24 * 365,
 		})
+		tvl += poolValue
 	}
 	sort.Slice(pools, func(i, j int) bool {
 		return pools[i].ID < pools[j].ID
 	})
+	cache.TotalValueLocked = tvl
 	cache.UpdatedAt = time.Now()
 	if err := s.SavePoolsCache(ctx, cache); err != nil {
 		return fmt.Errorf("save cache: %w", err)
