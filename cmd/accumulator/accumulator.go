@@ -15,15 +15,20 @@ import (
 )
 
 type Accumulator struct {
-	blockDataDir string
-	cm           *CacheManager
+	blockDataDir     string
+	cm               *CacheManager
+	watchedAddresses map[string]struct{}
 }
 
 func NewAccumulator(blockDataDir string, cm *CacheManager) (*Accumulator, error) {
 	if _, err := os.Stat(blockDataDir); err != nil {
 		return nil, fmt.Errorf("check block data dir: %w", err)
 	}
-	return &Accumulator{blockDataDir: blockDataDir, cm: cm}, nil
+	return &Accumulator{
+		blockDataDir:     blockDataDir,
+		cm:               cm,
+		watchedAddresses: make(map[string]struct{}),
+	}, nil
 }
 
 func (acc *Accumulator) LatestBlockBucket() (int64, error) {
@@ -106,10 +111,18 @@ func (acc *Accumulator) ReadBlockData(height int64) (*BlockData, error) {
 	return &blockData, nil
 }
 
+func (acc *Accumulator) WatchAddresses(addrs ...string) {
+	for _, addr := range addrs {
+		acc.watchedAddresses[addr] = struct{}{}
+	}
+}
+
 func (acc *Accumulator) UpdateStats(ctx context.Context, blockData *BlockData, stats *Stats) error {
 	stats.mux.Lock()
 	defer stats.mux.Unlock()
-	hourKey := HourKey(blockData.Header.Time)
+	t := blockData.Header.Time
+	height := blockData.Header.Height
+	hourKey := HourKey(t)
 	poolByID := blockData.PoolByID()
 	for _, evt := range blockData.Events {
 		select {
@@ -123,12 +136,20 @@ func (acc *Accumulator) UpdateStats(ctx context.Context, blockData *BlockData, s
 			if err != nil {
 				return fmt.Errorf("extract deposit event: %w", err)
 			}
+			if _, ok := acc.watchedAddresses[evt.DepositorAddress]; ok {
+				fmt.Printf("[%d/%s] %s deposits to %v to pool %d\n",
+					height, t.Format(time.RFC3339), evt.DepositorAddress, evt.AcceptedCoins, evt.PoolID)
+			}
 			stats.AddActiveAddress(hourKey, evt.DepositorAddress)
 			stats.AddNumDeposits(hourKey, evt.PoolID, 1)
 		case liquiditytypes.EventTypeSwapTransacted:
 			evt, err := NewSwapEvent(evt, poolByID)
 			if err != nil {
 				return fmt.Errorf("extract swap event: %w", err)
+			}
+			if _, ok := acc.watchedAddresses[evt.SwapRequesterAddress]; ok {
+				fmt.Printf("[%d/%s] %s swaps %s to %s in %d\n",
+					height, t.Format(time.RFC3339), evt.SwapRequesterAddress, evt.ExchangedOfferCoin, evt.ExchangedDemandCoin, evt.PoolID)
 			}
 			stats.AddActiveAddress(hourKey, evt.SwapRequesterAddress)
 			stats.AddNumSwaps(hourKey, evt.PoolID, 1)
