@@ -114,7 +114,6 @@ func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64, t
 			return nil, ctx.Err()
 		default:
 		}
-		t.logger.Debug("waiting for the block data", zap.Int64("height", blockHeight))
 		data, err := t.ReadBlockData(blockHeight)
 		if err != nil {
 			var berr *BlockDataDecodeError

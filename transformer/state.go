@@ -61,6 +61,7 @@ func (t *Transformer) AccStateUpdates(ctx context.Context, startingBlockHeight i
 		}
 		var data *BlockData
 		var err error
+		t.logger.Debug("waiting for the block data", zap.Int64("height", blockHeight))
 		if blockHeight == startingBlockHeight {
 			data, err = t.WaitForBlockData(ctx, blockHeight, 0)
 			if err != nil {
