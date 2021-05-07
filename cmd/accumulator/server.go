@@ -55,7 +55,7 @@ func (s *Server) GetStats(c echo.Context) error {
 		TransactedCoins               string `json:"transactedCoins"`
 		TransactedCoinsLast24Hours    string `json:"transactedCoinsLast24Hours"`
 		SwapVolume                    string `json:"swapVolume"`
-		SwapVolumeLast24Hours         string `json:"swapVolumeLast24Hours`
+		SwapVolumeLast24Hours         string `json:"swapVolumeLast24Hours"`
 	}
 	yesterday := time.Now().AddDate(0, 0, -1)
 	resp.BlockHeight = cache.BlockHeight
