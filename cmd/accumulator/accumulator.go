@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	liquiditytypes "github.com/tendermint/liquidity/x/liquidity/types"
@@ -14,13 +16,14 @@ import (
 
 type Accumulator struct {
 	blockDataDir string
+	cm           *CacheManager
 }
 
-func NewAccumulator(blockDataDir string) (*Accumulator, error) {
+func NewAccumulator(blockDataDir string, cm *CacheManager) (*Accumulator, error) {
 	if _, err := os.Stat(blockDataDir); err != nil {
 		return nil, fmt.Errorf("check block data dir: %w", err)
 	}
-	return &Accumulator{blockDataDir: blockDataDir}, nil
+	return &Accumulator{blockDataDir: blockDataDir, cm: cm}, nil
 }
 
 func (acc *Accumulator) LatestBlockBucket() (int64, error) {
@@ -120,14 +123,14 @@ func (acc *Accumulator) UpdateStats(ctx context.Context, blockData *BlockData, s
 			if err != nil {
 				return fmt.Errorf("extract deposit event: %w", err)
 			}
-			stats.AddActiveAddress(evt.DepositorAddress)
+			stats.AddActiveAddress(hourKey, evt.DepositorAddress)
 			stats.AddNumDeposits(hourKey, evt.PoolID, 1)
 		case liquiditytypes.EventTypeSwapTransacted:
 			evt, err := NewSwapEvent(evt, poolByID)
 			if err != nil {
 				return fmt.Errorf("extract swap event: %w", err)
 			}
-			stats.AddActiveAddress(evt.SwapRequesterAddress)
+			stats.AddActiveAddress(hourKey, evt.SwapRequesterAddress)
 			stats.AddNumSwaps(hourKey, evt.PoolID, 1)
 			stats.AddOfferCoins(hourKey, evt.PoolID, Coins{
 				evt.ExchangedOfferCoin.Denom: evt.ExchangedDemandCoin.Amount.Int64(),
@@ -140,7 +143,7 @@ func (acc *Accumulator) UpdateStats(ctx context.Context, blockData *BlockData, s
 	return nil
 }
 
-func (acc *Accumulator) Run(ctx context.Context, stats *Stats, startHeight, endHeight int64, numWorkers int) (*Stats, error) {
+func (acc *Accumulator) Accumulate(ctx context.Context, stats *Stats, startHeight, endHeight int64, numWorkers int) (*Stats, error) {
 	if stats == nil {
 		stats = NewStats()
 	}
@@ -183,4 +186,51 @@ func (acc *Accumulator) Run(ctx context.Context, stats *Stats, startHeight, endH
 	}
 
 	return stats, nil
+}
+
+func (acc *Accumulator) Run(ctx context.Context, numWorkers int) error {
+	c, err := acc.cm.Get(ctx)
+	if err != nil {
+		return fmt.Errorf("get cache: %w", err)
+	}
+	var st *Stats
+	blockHeight := int64(1)
+	if c != nil {
+		st = c.Stats
+		blockHeight = c.BlockHeight
+	}
+
+	if blockHeight > 1 {
+		log.Printf("last cached block height: %v", c.BlockHeight)
+	} else {
+		log.Printf("no cache found")
+	}
+
+	h, err := acc.LatestBlockHeight()
+	if err != nil {
+		return fmt.Errorf("get latest block height: %w", err)
+	}
+
+	if blockHeight >= h {
+		log.Printf("the state is up to date")
+	} else {
+		log.Printf("accumulating from %d to %d", blockHeight, h)
+
+		started := time.Now()
+		st, err = acc.Accumulate(ctx, st, blockHeight, h, numWorkers)
+		if err != nil {
+			return fmt.Errorf("run accumulator: %w", err)
+		}
+		log.Printf("accumulated state in %v", time.Since(started))
+
+		if err := acc.cm.Set(ctx, &Cache{
+			BlockHeight: h,
+			Stats:       st,
+		}); err != nil {
+			return fmt.Errorf("set cache: %w", err)
+		}
+		log.Printf("saved cache")
+	}
+
+	return nil
 }

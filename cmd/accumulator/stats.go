@@ -9,20 +9,40 @@ import (
 )
 
 type Stats struct {
-	ActiveAddresses map[string]struct{}
-	ByHour          map[string]*HourlyStats
-	mux             sync.Mutex
+	ByHour map[string]*HourlyStats
+	mux    sync.Mutex
 }
 
 func NewStats() *Stats {
 	return &Stats{
-		ActiveAddresses: make(map[string]struct{}),
-		ByHour:          make(map[string]*HourlyStats),
+		ByHour: make(map[string]*HourlyStats),
 	}
 }
 
 func (s *Stats) NumActiveAddresses() int {
-	return len(s.ActiveAddresses)
+	addrs := make(map[string]struct{})
+	for _, hs := range s.ByHour {
+		for addr := range hs.ActiveAddresses {
+			addrs[addr] = struct{}{}
+		}
+	}
+	return len(addrs)
+}
+
+func (s *Stats) NumActiveAddressesSince(t time.Time) int {
+	t = t.UTC().Truncate(time.Hour)
+	now := time.Now()
+	addrs := make(map[string]struct{})
+	for !t.After(now) {
+		hs, ok := s.ByHour[HourKey(t)]
+		if ok {
+			for addr := range hs.ActiveAddresses {
+				addrs[addr] = struct{}{}
+			}
+		}
+		t = t.Add(time.Hour)
+	}
+	return len(addrs)
 }
 
 func (s *Stats) NumDeposits() int {
@@ -129,8 +149,36 @@ func (s *Stats) DemandCoinsSince(t time.Time) Coins {
 	return cs
 }
 
-func (s *Stats) AddActiveAddress(addr string) {
-	s.ActiveAddresses[addr] = struct{}{}
+func (s *Stats) TransactedCoins() Coins {
+	cs := make(Coins)
+	for _, hs := range s.ByHour {
+		for _, v := range hs.SwapVolumeByPoolID {
+			cs.Add(v.OfferCoins)
+			cs.Add(v.DemandCoins)
+		}
+	}
+	return cs
+}
+
+func (s *Stats) TransactedCoinsSince(t time.Time) Coins {
+	t = t.UTC().Truncate(time.Hour)
+	now := time.Now()
+	cs := make(Coins)
+	for !t.After(now) {
+		hs, ok := s.ByHour[HourKey(t)]
+		if ok {
+			for _, v := range hs.SwapVolumeByPoolID {
+				cs.Add(v.OfferCoins)
+				cs.Add(v.DemandCoins)
+			}
+		}
+		t = t.Add(time.Hour)
+	}
+	return cs
+}
+
+func (s *Stats) AddActiveAddress(hourKey, addr string) {
+	s.HourlyStats(hourKey).AddActiveAddress(addr)
 }
 
 func (s *Stats) AddNumSwaps(hourKey string, poolID uint64, amount int) {
@@ -150,6 +198,7 @@ func (s *Stats) AddDemandCoins(hourKey string, poolID uint64, coins Coins) {
 }
 
 type HourlyStats struct {
+	ActiveAddresses     map[string]struct{}
 	NumSwapsByPoolID    map[uint64]int
 	NumDepositsByPoolID map[uint64]int
 	SwapVolumeByPoolID  map[uint64]*SwapVolume
@@ -159,6 +208,7 @@ func (s *Stats) HourlyStats(hourKey string) *HourlyStats {
 	hs, ok := s.ByHour[hourKey]
 	if !ok {
 		hs = &HourlyStats{
+			ActiveAddresses:     make(map[string]struct{}),
 			NumSwapsByPoolID:    make(map[uint64]int),
 			NumDepositsByPoolID: make(map[uint64]int),
 			SwapVolumeByPoolID:  make(map[uint64]*SwapVolume),
@@ -166,6 +216,10 @@ func (s *Stats) HourlyStats(hourKey string) *HourlyStats {
 		s.ByHour[hourKey] = hs
 	}
 	return hs
+}
+
+func (hs *HourlyStats) AddActiveAddress(addr string) {
+	hs.ActiveAddresses[addr] = struct{}{}
 }
 
 func (hs *HourlyStats) AddNumSwaps(poolID uint64, amount int) {
@@ -214,6 +268,14 @@ func (cs Coins) String() string {
 		ss = append(ss, fmt.Sprintf("%d%s", cs[denom], denom))
 	}
 	return strings.Join(ss, ",")
+}
+
+func (cs Coins) Div(q int64) Coins {
+	res := make(Coins)
+	for denom, amount := range cs {
+		res[denom] = amount / q
+	}
+	return res
 }
 
 func (cs Coins) Add(coins Coins) {

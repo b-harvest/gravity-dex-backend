@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"runtime"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -15,6 +19,8 @@ func RootCmd() *cobra.Command {
 	var redisURL string
 	var blockDataDir string
 	var numWorkers int
+	var updateInterval time.Duration
+	var bindAddr string
 	cmd := &cobra.Command{
 		Use: "accumulator",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -26,74 +32,58 @@ func RootCmd() *cobra.Command {
 				},
 			}
 
-			acc, err := NewAccumulator(blockDataDir)
+			cm := NewCacheManager(rp, CacheKey)
+			acc, err := NewAccumulator(blockDataDir, cm)
 			if err != nil {
 				return fmt.Errorf("new accumulator: %w", err)
 			}
 
-			cm := NewCacheManager(rp, CacheKey)
-
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			c, err := cm.Get(ctx)
-			if err != nil {
-				return fmt.Errorf("get cache: %w", err)
-			}
-			var st *Stats
-			blockHeight := int64(1)
-			if c != nil {
-				st = c.Stats
-				blockHeight = c.BlockHeight
-			}
+			s := NewServer(cm)
 
-			if blockHeight > 1 {
-				log.Printf("last cached block height: %v", c.BlockHeight)
-			} else {
-				log.Printf("no cache found")
-			}
-
-			h, err := acc.LatestBlockHeight()
-			if err != nil {
-				return fmt.Errorf("get latest block height: %w", err)
-			}
-
-			if blockHeight >= h {
-				log.Printf("the state is up to date")
-			} else {
-				log.Printf("accumulating from %d to %d", blockHeight, h)
-
-				started := time.Now()
-				st, err = acc.Run(ctx, st, blockHeight, h, numWorkers)
-				if err != nil {
-					return fmt.Errorf("run accumulator: %w", err)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+					if err := acc.Run(ctx, numWorkers); err != nil {
+						log.Printf("failed to run accumulator: %v", err)
+					}
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(updateInterval):
+					}
 				}
-				log.Printf("accumulated state in %v", time.Since(started))
+			}()
 
-				if err := cm.Set(ctx, &Cache{
-					BlockHeight: h,
-					Stats:       st,
-				}); err != nil {
-					return fmt.Errorf("set cache: %w", err)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				log.Printf("server started on %s", bindAddr)
+				if err := s.Start(bindAddr); err != nil {
+					log.Fatalf("failed run server: %v", err)
 				}
+			}()
+
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+			<-sigs
+			signal.Reset(syscall.SIGINT, syscall.SIGTERM)
+
+			log.Printf("gracefully shutting down")
+			cancel()
+			if err := s.ShutdownWithTimeout(10 * time.Second); err != nil {
+				log.Printf("failed to shutdown server: %v", err)
 			}
-
-			yesterday := time.Now().AddDate(0, 0, -1)
-			log.Printf("active addresses = %d", len(st.ActiveAddresses))
-
-			log.Printf("total %d deposits, %d swaps", st.NumDeposits(), st.NumSwaps())
-			log.Printf("(last 24 hours) %d deposits, %d swaps", st.NumDepositsSince(yesterday), st.NumSwapsSince(yesterday))
-
-			v := st.OfferCoins()
-			v.Add(st.DemandCoins())
-			log.Printf("total swapped coins (offer coins + demand coins) = %s", v)
-			v = st.OfferCoinsSince(yesterday)
-			v.Add(st.DemandCoinsSince(yesterday))
-			log.Printf("(last 24 hours) total swapped coins (offer coins + demand coins) = %s", v)
-
-			log.Printf("hint: you can obtain the swap volume by first calculating " +
-				"the value of swapped coins(lookup the price table!) then " +
-				"divide it by 2(since it is the sum of offer coins AND demand coins)")
+			wg.Wait()
 
 			return nil
 		},
@@ -101,6 +91,8 @@ func RootCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&redisURL, "redis", "r", "redis://localhost", "redis url")
 	cmd.Flags().StringVarP(&blockDataDir, "dir", "d", "", "block data dir")
 	cmd.Flags().IntVarP(&numWorkers, "workers", "n", runtime.NumCPU(), "number of concurrent workers")
+	cmd.Flags().DurationVarP(&updateInterval, "interval", "i", 30*time.Second, "update interval")
+	cmd.Flags().StringVarP(&bindAddr, "bind", "b", "0.0.0.0:9000", "binding address")
 	_ = cmd.MarkFlagRequired("dir")
 	return cmd
 }
