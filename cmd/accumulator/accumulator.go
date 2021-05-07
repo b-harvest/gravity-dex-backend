@@ -137,8 +137,13 @@ func (acc *Accumulator) UpdateStats(ctx context.Context, blockData *BlockData, s
 				return fmt.Errorf("extract deposit event: %w", err)
 			}
 			if _, ok := acc.watchedAddresses[evt.DepositorAddress]; ok {
-				fmt.Printf("[%d/%s] %s deposits to %v to pool %d\n",
-					height, t.Format(time.RFC3339), evt.DepositorAddress, evt.AcceptedCoins, evt.PoolID)
+				pool, ok := poolByID[evt.PoolID]
+				if !ok {
+					return fmt.Errorf("pool %d nout found", evt.PoolID)
+				}
+				fmt.Printf("[%d/%s] %s deposits %v to %s/%s pool\n",
+					height, t.Format(time.RFC3339), evt.DepositorAddress, evt.AcceptedCoins,
+					pool.ReserveCoinDenoms[0], pool.ReserveCoinDenoms[1])
 			}
 			stats.AddActiveAddress(hourKey, evt.DepositorAddress)
 			stats.AddNumDeposits(hourKey, evt.PoolID, 1)
@@ -148,8 +153,13 @@ func (acc *Accumulator) UpdateStats(ctx context.Context, blockData *BlockData, s
 				return fmt.Errorf("extract swap event: %w", err)
 			}
 			if _, ok := acc.watchedAddresses[evt.SwapRequesterAddress]; ok {
-				fmt.Printf("[%d/%s] %s swaps %s to %s in %d\n",
-					height, t.Format(time.RFC3339), evt.SwapRequesterAddress, evt.ExchangedOfferCoin, evt.ExchangedDemandCoin, evt.PoolID)
+				pool, ok := poolByID[evt.PoolID]
+				if !ok {
+					return fmt.Errorf("pool %d not found", evt.PoolID)
+				}
+				fmt.Printf("[%d/%s] %s swaps %s to %s in %s/%s pool\n",
+					height, t.Format(time.RFC3339), evt.SwapRequesterAddress, evt.ExchangedOfferCoin,
+					evt.ExchangedDemandCoin, pool.ReserveCoinDenoms[0], pool.ReserveCoinDenoms[1])
 			}
 			stats.AddActiveAddress(hourKey, evt.SwapRequesterAddress)
 			stats.AddNumSwaps(hourKey, evt.PoolID, 1)
