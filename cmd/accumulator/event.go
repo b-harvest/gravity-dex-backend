@@ -36,6 +36,33 @@ func NewDepositEvent(event abcitypes.Event) (*DepositEvent, error) {
 	}, nil
 }
 
+type WithdrawEvent struct {
+	PoolID            uint64
+	WithdrawerAddress string
+	WithdrawnCoins    sdk.Coins
+}
+
+func NewWithdrawEvent(event abcitypes.Event) (*WithdrawEvent, error) {
+	attrs := EventAttributesFromEvent(event)
+	poolID, err := attrs.PoolID()
+	if err != nil {
+		return nil, err
+	}
+	addr, err := attrs.WithdrawerAddress()
+	if err != nil {
+		return nil, err
+	}
+	coins, err := attrs.WithdrawnCoins()
+	if err != nil {
+		return nil, err
+	}
+	return &WithdrawEvent{
+		PoolID:            poolID,
+		WithdrawerAddress: addr,
+		WithdrawnCoins:    coins,
+	}, nil
+}
+
 type SwapEvent struct {
 	PoolID               uint64
 	SwapRequesterAddress string
@@ -123,6 +150,26 @@ func (attrs EventAttributes) DepositorAddress() (string, error) {
 
 func (attrs EventAttributes) AcceptedCoins() (sdk.Coins, error) {
 	v, err := attrs.Attr(liquiditytypes.AttributeValueAcceptedCoins)
+	if err != nil {
+		return nil, err
+	}
+	coins, err := sdk.ParseCoinsNormalized(v)
+	if err != nil {
+		return nil, fmt.Errorf("parse coins: %w", err)
+	}
+	return coins, nil
+}
+
+func (attrs EventAttributes) WithdrawerAddress() (string, error) {
+	v, err := attrs.Attr(liquiditytypes.AttributeValueWithdrawer)
+	if err != nil {
+		return "", err
+	}
+	return v, nil
+}
+
+func (attrs EventAttributes) WithdrawnCoins() (sdk.Coins, error) {
+	v, err := attrs.Attr(liquiditytypes.AttributeValueWithdrawCoins)
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,7 @@ var CacheKey = "gdex-accumulator:cache"
 
 type Cache struct {
 	BlockHeight int64
-	Stats       *Stats
+	Data        *Data
 }
 
 type CacheManager struct {

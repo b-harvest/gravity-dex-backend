@@ -57,22 +57,6 @@ func (s *Server) GetStats(c echo.Context) error {
 		SwapVolume                    string `json:"swapVolume"`
 		SwapVolumeLast24Hours         string `json:"swapVolumeLast24Hours"`
 	}
-	yesterday := time.Now().AddDate(0, 0, -1)
-	resp.BlockHeight = cache.BlockHeight
-	resp.NumActiveAddresses = cache.Stats.NumActiveAddresses()
-	resp.NumActiveAddressesLast24Hours = cache.Stats.NumActiveAddressesSince(yesterday)
-	resp.NumDeposits = cache.Stats.NumDeposits()
-	resp.NumSwaps = cache.Stats.NumSwaps()
-	resp.NumTransactions = resp.NumDeposits + resp.NumSwaps
-	resp.NumDepositsLast24Hours = cache.Stats.NumDepositsSince(yesterday)
-	resp.NumSwapsLast24Hours = cache.Stats.NumSwapsSince(yesterday)
-	resp.NumTransactionsLast24Hours = resp.NumDepositsLast24Hours + resp.NumSwapsLast24Hours
-	cs := cache.Stats.TransactedCoins()
-	resp.TransactedCoins = cs.String()
-	resp.SwapVolume = cs.Div(2).String()
-	cs = cache.Stats.TransactedCoinsSince(yesterday)
-	resp.TransactedCoinsLast24Hours = cs.String()
-	resp.SwapVolumeLast24Hours = cs.Div(2).String()
 	return c.JSON(http.StatusOK, resp)
 }
 
