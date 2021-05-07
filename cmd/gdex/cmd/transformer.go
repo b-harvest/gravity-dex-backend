@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -65,13 +67,25 @@ func TransformerCmd() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			done := make(chan error)
+			var wg sync.WaitGroup
+			wg.Add(1)
 			go func() {
-				err := t.Run(ctx)
-				if err != nil && !errors.Is(err, context.Canceled) {
-					logger.Error("failed to run transformer", zap.Error(err))
+				defer wg.Done()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						if err := t.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+							logger.Error("failed to run transformer", zap.Error(err))
+						}
+					}
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(time.Second):
+					}
 				}
-				done <- err
 			}()
 
 			quit := make(chan os.Signal, 1)
@@ -80,10 +94,7 @@ func TransformerCmd() *cobra.Command {
 
 			logger.Info("gracefully shutting down")
 			cancel()
-
-			if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
-				return err
-			}
+			wg.Wait()
 			return nil
 		},
 	}

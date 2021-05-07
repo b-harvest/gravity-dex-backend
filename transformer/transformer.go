@@ -77,6 +77,18 @@ func (t *Transformer) blockDataFilename(blockHeight int64) string {
 	return filepath.Join(t.cfg.BlockDataDir, fmt.Sprintf(t.cfg.BlockDataFilename, p, blockHeight))
 }
 
+type BlockDataDecodeError struct {
+	Err error
+}
+
+func (err *BlockDataDecodeError) Error() string {
+	return err.Err.Error()
+}
+
+func (err *BlockDataDecodeError) Unwrap() error {
+	return err.Err
+}
+
 func (t *Transformer) ReadBlockData(blockHeight int64) (*BlockData, error) {
 	f, err := os.Open(t.blockDataFilename(blockHeight))
 	if err != nil {
@@ -85,7 +97,7 @@ func (t *Transformer) ReadBlockData(blockHeight int64) (*BlockData, error) {
 	defer f.Close()
 	var data BlockData
 	if err := jsonit.NewDecoder(f).Decode(&data); err != nil {
-		return nil, err
+		return nil, &BlockDataDecodeError{err}
 	}
 	return &data, nil
 }
@@ -105,7 +117,9 @@ func (t *Transformer) WaitForBlockData(ctx context.Context, blockHeight int64, t
 		t.logger.Debug("waiting for the block data", zap.Int64("height", blockHeight))
 		data, err := t.ReadBlockData(blockHeight)
 		if err != nil {
-			if !os.IsNotExist(err) {
+			var berr *BlockDataDecodeError
+			if !os.IsNotExist(err) && !errors.As(err, &berr) {
+				//if !os.IsNotExist(err) {
 				return nil, fmt.Errorf("read block data: %w", err)
 			}
 		} else {
